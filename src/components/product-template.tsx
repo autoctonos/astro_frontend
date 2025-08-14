@@ -17,7 +17,7 @@ export default function ProductTemplate({ product }: { product: Producto }) {
         <div className="w-full sm:w-1/3">
           <ProductActions
             price={product.precio}
-            stock={(product as any).stock}
+            stock={product.stock}
             productId={product.id_producto}
             productName={product.nombre}
             image={product.imagenes?.[0]?.url_imagen}

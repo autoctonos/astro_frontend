@@ -1,4 +1,3 @@
-// src/lib/http.ts
 const API_BASE = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:8000";
 
 export async function http<T>(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<T> {

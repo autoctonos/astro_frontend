@@ -2,6 +2,8 @@
 import "../styles/global.css";
 import Footer from "@/components/Footer";
 const { title = "Autóctonos" } = Astro.props;
+import CartDrawer from "@/components/cart-drawer";
+
 ---
 <html lang="es">
   <head>
@@ -12,9 +14,9 @@ const { title = "Autóctonos" } = Astro.props;
   <body class="relative flex min-h-screen flex-col bg-custom-cream">
     <main class="container mx-auto max-w-7xl flex-grow px-6 pt-16">
       <slot />
+      <CartDrawer client:load />
     </main>
 
-    {/* React island keeps HeroUI without hydrating the whole page */}
     <Footer client:idle />
   </body>
 </html>

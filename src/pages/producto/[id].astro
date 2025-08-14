@@ -1,21 +1,13 @@
 ---
-// src/pages/producto/[id].astro
+export const prerender = false;
+
 import Layout from "@/layouts/Layout.astro";
-import ProductTemplate from "@/components/product-template";
-import { fetchProductosConImagenes } from "@/api/products";
+import Navbar from "@/components/Navbar";
+import ProductPageClient from "@/components/ProductPageClient";
 
-export async function getStaticPaths() {
-  // Trae los productos y genera las rutas estáticas
-  const list = await fetchProductosConImagenes();
-
-  return list.map((p) => ({
-    params: { id: String(p.id_producto) },
-    props: { product: p }, // pasamos el producto listo a la página
-  }));
-}
-
-const { product } = Astro.props; // recibido desde getStaticPaths
+const { id } = Astro.params;
 ---
-<Layout title={product?.nombre ?? "Producto"}>
-  <ProductTemplate client:idle product={product} />
+<Layout title="Producto">
+  <Navbar client:idle />
+  <ProductPageClient client:load id={String(id)} />
 </Layout>

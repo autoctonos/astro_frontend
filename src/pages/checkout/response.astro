@@ -1,0 +1,16 @@
+---
+import Layout from "@/layouts/Layout.astro";
+const query = Astro.url.searchParams; // PayU redirige por GET con varios parámetros
+const ref = query.get("referenceCode");
+const state = query.get("transactionState") || query.get("state_pol");
+const message = query.get("message") || query.get("response_message_pol");
+---
+<Layout>
+  <div class="mx-auto max-w-xl px-4 py-12 text-center">
+    <h1 class="mb-2 text-2xl font-semibold text-custom-dark-green">Resultado del pago</h1>
+    <p class="mb-6 text-gray-700">Referencia: <strong>{ref}</strong></p>
+    <p class="mb-8">Estado: <strong>{state}</strong></p>
+    <p class="mb-8">{message}</p>
+    <a class="rounded-xl bg-custom-dark-green px-4 py-2 text-white" href="/">Volver al inicio</a>
+  </div>
+</Layout>

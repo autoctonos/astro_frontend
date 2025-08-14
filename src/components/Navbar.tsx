@@ -6,7 +6,6 @@ import {
   NavbarItem,
   NavbarMenu,
   NavbarMenuItem,
-  NavbarMenuToggle,
   Input,
   Button,
   Link,
@@ -17,9 +16,10 @@ import clsx from "clsx";
 import { siteConfig } from "@/config/site";
 import { HeartFilledIcon, SearchIcon } from "@/components/icons";
 import Drop from "@/components/common/dropdown";
-import ShopSiderBar from "@/components/common/shop-sidebar";
 import { useProductosSearch } from "@/hooks/useProductosSearch";
 import SearchResults from "@/components/SearchResults";
+import { CartIcon } from "@/components/icons";
+import { openCart, useCartCount } from "@/stores/cart";
 
 type NavItem = { href: string; label: string };
 
@@ -38,14 +38,15 @@ export default function Navbar() {
       position="sticky"
       className="sticky top-0 z-50 border-b border-custom-medium-green/30 bg-custom-cream/80 backdrop-blur-md supports-[backdrop-filter]:bg-custom-cream/60"
     >
+
       <NavbarContent className="basis-1/4 sm:basis-full" justify="start">
         <NavbarBrand as="li" className="max-w-fit">
           <a
-            className="group flex items-center gap-2 rounded-2xl p-1 ring-0 transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+            className="group flex items-center gap-2 rounded-2xl p-1 transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
             href="/"
             aria-label="Inicio"
           >
-            <img src="/logo.svg" alt="Autóctonos" height={48} width={48} />
+            <img src="/logo.svg" alt="Autóctonos" height={44} width={44} />
             <span className="sr-only">Autóctonos</span>
           </a>
         </NavbarBrand>
@@ -79,6 +80,9 @@ export default function Navbar() {
             ref={boxRef}
             className="relative w-full lg:w-[480px]"
             onFocus={() => results.length && setOpenList(true)}
+            onBlur={(e) => {
+              if (!boxRef.current?.contains(e.relatedTarget as Node)) setOpenList(false);
+            }}
           >
             <Input
               aria-label="Buscar productos"
@@ -94,9 +98,11 @@ export default function Navbar() {
               }}
               labelPlacement="outside"
               placeholder="Encuentra tu próximo producto…"
-              startContent={<span className="text-custom-medium-green">
-                <SearchIcon />
-              </span>}
+              startContent={
+                <span className="text-custom-medium-green">
+                  <SearchIcon />
+                </span>
+              }
               type="search"
             />
 
@@ -118,6 +124,24 @@ export default function Navbar() {
               </div>
             )}
           </div>
+          <NavbarItem className="hidden md:flex">
+            <button
+              onClick={() => openCart()}
+              className="relative rounded-xl p-2 transition hover:bg-custom-light-green/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+              aria-label="Abrir carrito"
+            >
+              <CartIcon />
+              {useCartCount() > 0 && (
+                <span
+                  className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-custom-red px-1 text-[10px] font-semibold text-white"
+                  aria-label="Cantidad en carrito"
+                >
+                  {useCartCount()}
+                </span>
+              )}
+            </button>
+          </NavbarItem>
+
         </NavbarItem>
 
         <NavbarItem className="hidden sm:flex gap-2">
@@ -127,7 +151,8 @@ export default function Navbar() {
           >
             <Button
               className="bg-custom-dark-green text-custom-cream transition hover:bg-custom-medium-green"
-              startContent={<HeartFilledIcon className="text-custom-red" />}              size="sm"
+              startContent={<HeartFilledIcon className="text-custom-red" />}
+              size="sm"
               variant="solid"
             >
               Nuestros Productores
@@ -136,29 +161,58 @@ export default function Navbar() {
         </NavbarItem>
 
         <NavbarItem className="hidden md:flex">
-          <ShopSiderBar />
         </NavbarItem>
       </NavbarContent>
 
-      <NavbarContent className="basis-1 pl-2 sm:hidden" justify="end">
-        <NavbarMenuToggle className="text-custom-dark-green" />
-      </NavbarContent>
 
-      <NavbarMenu className="bg-custom-cream/95 p-2">
-        <div className="mx-2 mt-1 flex flex-col gap-1">
+      {/* Menú hamburguesa */}
+      <NavbarMenu className="bg-custom-cream/95 p-3">
+        <div className="mb-3">
+          <div className="relative">
+            <Input
+              aria-label="Buscar productos"
+              classNames={{
+                inputWrapper:
+                  "group data-[hover=true]:bg-custom-cream/70 bg-custom-cream/60 w-full border border-custom-medium-green/40 shadow-sm transition focus-within:border-custom-medium-green focus-within:shadow-md",
+                input: "text-sm text-custom-black placeholder:text-custom-black/50",
+              }}
+              value={query}
+              onValueChange={(v) => setQuery(v)}
+              placeholder="Buscar…"
+              startContent={
+                <span className="text-custom-medium-green">
+                  <SearchIcon />
+                </span>
+              }
+              type="search"
+            />
+            {(loading || results.length > 0) && query && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-2xl border border-custom-medium-green/30 bg-white shadow-xl">
+                {loading ? (
+                  <div className="flex items-center gap-2 p-3 text-sm text-gray-600">
+                    <Spinner size="sm" /> Buscando…
+                  </div>
+                ) : (
+                  <ul role="listbox" className="max-h-80 overflow-auto scroll-py-2">
+                    <SearchResults items={results} onItemClick={() => (setQuery(""), setOpenList(false))} />
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-2">
+          <Drop title="Categorías" />
+        </div>
+
+        <div className="mx-1 mt-1 flex flex-col gap-1">
           {navMenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item.href}-${index}`}>
               <Link
                 href={item.href}
                 size="lg"
                 className="rounded-xl px-2 py-1 text-custom-dark-green transition hover:bg-custom-light-green/10 hover:text-custom-dark-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
-                color={
-                  index === 2
-                    ? "primary"
-                    : index === navMenuItems.length - 1
-                    ? "danger"
-                    : "foreground"
-                }
               >
                 {item.label}
               </Link>

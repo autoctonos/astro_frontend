@@ -7,7 +7,9 @@ export const ImagenSchema = z.object({
 export const ProductoSchema = z.object({
   id_producto: z.number(),
   nombre: z.string(),
+  descripcion: z.string(),
   precio: z.union([z.number(), z.string()]),
+  stock: z.number(),
   imagenes: z.array(ImagenSchema).optional(),
 });
 

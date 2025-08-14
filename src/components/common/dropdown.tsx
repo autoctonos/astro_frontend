@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
-import { fetchCategorias } from "@/api/category";
+import { fetchCategorias } from "@/api/categories";
 import type { Categoria } from "@/api/schemas/categories";
 
 export default function Drop({ title }: { title: string }) {

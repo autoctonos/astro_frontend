@@ -1,4 +1,3 @@
-// src/api/categories.ts
 import { http } from "@/lib/http";
 import { CategoriasArraySchema, type Categoria } from "./schemas/categories";
 

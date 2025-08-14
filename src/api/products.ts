@@ -1,4 +1,3 @@
-// src/api/products.ts
 import { http } from "@/lib/http";
 import { ProductoSchema, ProductosArraySchema } from "@/api/schemas/products";
 export type { Producto } from "@/api/schemas/products";
@@ -11,8 +10,9 @@ export async function fetchProductosConImagenes() {
 }
 
 export async function fetchProductoById(id: string | number) {
-  const data = await http<unknown>(`/api/productos/${id}/`);
+  const data = await http<unknown>(`/api/productos/producto-detalle/${id}/`);
   const parsed = ProductoSchema.safeParse(data);
   if (!parsed.success) throw new Error("Producto no encontrado");
   return parsed.data;
 }
+

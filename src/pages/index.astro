@@ -1,49 +1,9 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import { title, subtitle } from "@/components/primitives";
-import ProductsList from "@/components/product-list";
-import CategoryList from "@/components/category-list";
-
-import Footer from "@/components/Footer";
-
-
-import { getProductsImages } from "@/services/server/products-image";
-import { getCategory } from "@/services/server/category";
 import Navbar from "@/components/Navbar";
-
-const { success, data, message } = await getProductsImages();
-const { success: okCats, data: categories, message: catsMsg } = await getCategory();
+import HomeClient from "@/components/HomeClient";
 ---
 <Layout title="Inicio">
   <Navbar client:idle />
-  <section class="flex flex-col items-center justify-center gap-5 py-8 md:py-10">
-    <img src="/logo.svg" alt="logo" height="300" width="300" />
-    
-    <div class="inline-block max-w-xl justify-center text-center">
-      <span class={title()}>Compra y vende&nbsp;</span>
-      <span class={title({ color: "pink" })}>productos&nbsp;</span><br />
-      <span class={title()}>artesanales locales</span>
-      <div class={subtitle({ class: "mt-4" })}>
-        El marketplace donde la tradición y la calidad se encuentran
-      </div>
-    </div>
-  </section>
-
-  {success ? (
-    <section class="container mx-auto px-4 py-6">
-      <h2 class={subtitle({ class: "mb-4 text-xl font-semibold" })}>Productos Destacados</h2>
-      <ProductsList client:idle products={data} />
-    </section>
-  ) : (
-    <p class="text-red-600">{message}</p>
-  )}
-
-  {okCats ? (
-    <section class="container mx-auto px-4 py-6">
-      <h2 class={subtitle({ class: "mb-4 text-xl font-semibold" })}>Categorías</h2>
-      <CategoryList client:idle categories={categories} />
-    </section>
-  ) : (
-    <p class="text-red-600">{catsMsg}</p>
-  )}
+  <HomeClient client:load />
 </Layout>
