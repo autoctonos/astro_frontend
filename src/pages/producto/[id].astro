@@ -1,0 +1,21 @@
+---
+// src/pages/producto/[id].astro
+import MainLayout from "@/layouts/MainLayout.astro";
+import ProductTemplate from "@/components/product-template";
+import { fetchProductosConImagenes } from "@/api/products";
+
+export async function getStaticPaths() {
+  // Trae los productos y genera las rutas estáticas
+  const list = await fetchProductosConImagenes();
+
+  return list.map((p) => ({
+    params: { id: String(p.id_producto) },
+    props: { product: p }, // pasamos el producto listo a la página
+  }));
+}
+
+const { product } = Astro.props; // recibido desde getStaticPaths
+---
+<MainLayout title={product?.nombre ?? "Producto"}>
+  <ProductTemplate client:idle product={product} />
+</MainLayout>

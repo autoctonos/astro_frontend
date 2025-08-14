@@ -1,0 +1,19 @@
+type Opt = { class?: string; color?: "pink" | "green" };
+
+export function title(opt: Opt = {}) {
+  const base = "font-extrabold tracking-tight";
+  const size = "text-3xl md:text-5xl";
+  const color =
+    opt.color === "pink"
+      ? "text-pink-600"
+      : opt.color === "green"
+      ? "text-custom-dark-green"
+      : "text-custom-dark-green";
+  return [base, size, color, opt.class].filter(Boolean).join(" ");
+}
+
+export function subtitle(opt: Opt = {}) {
+  const base = "text-base md:text-lg";
+  const color = "text-custom-black/80";
+  return [base, color, opt.class].filter(Boolean).join(" ");
+}
