@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Servicio para desarrollo
+  astro-dev:
+    build:
+      context: .
+      target: dev
+      args:
+        - PUBLIC_API_BASE=${PUBLIC_API_BASE:-http://localhost:8000/}
+    ports:
+      - "4321:4321"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PUBLIC_API_BASE=${PUBLIC_API_BASE:-http://localhost:8000/}
+    env_file:
+      - .env
+    command: pnpm dev --host 0.0.0.0
+    profiles:
+      - dev
+
+  # Servicio para producción
+  astro-prod:
+    build:
+      context: .
+      target: production
+      args:
+        - PUBLIC_API_BASE=${PUBLIC_API_BASE:-http://localhost:8000}
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+    profiles:
+      - prod
+
+  # Servicio alternativo con Node.js para SSR/híbrido
+  astro-node:
+    build:
+      context: .
+      target: base
+      args:
+        - PUBLIC_API_BASE=${PUBLIC_API_BASE:-http://localhost:8000}
+    ports:
+      - "4321:4321"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4321
+      - PUBLIC_API_BASE=${PUBLIC_API_BASE:-http://localhost:8000/}
+    command: sh -c "pnpm build && pnpm preview --host 0.0.0.0"
+    profiles:
+      - node
