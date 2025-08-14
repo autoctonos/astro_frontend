@@ -1,6 +1,6 @@
 ---
 // src/pages/producto/[id].astro
-import MainLayout from "@/layouts/MainLayout.astro";
+import Layout from "@/layouts/Layout.astro";
 import ProductTemplate from "@/components/product-template";
 import { fetchProductosConImagenes } from "@/api/products";
 
@@ -16,6 +16,6 @@ export async function getStaticPaths() {
 
 const { product } = Astro.props; // recibido desde getStaticPaths
 ---
-<MainLayout title={product?.nombre ?? "Producto"}>
+<Layout title={product?.nombre ?? "Producto"}>
   <ProductTemplate client:idle product={product} />
-</MainLayout>
+</Layout>

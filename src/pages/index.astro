@@ -1,5 +1,5 @@
 ---
-import MainLayout from "@/layouts/MainLayout.astro";
+import Layout from "@/layouts/Layout.astro";
 import { title, subtitle } from "@/components/primitives";
 import ProductsList from "@/components/product-list";
 import CategoryList from "@/components/category-list";
@@ -14,11 +14,11 @@ import Navbar from "@/components/Navbar";
 const { success, data, message } = await getProductsImages();
 const { success: okCats, data: categories, message: catsMsg } = await getCategory();
 ---
-<MainLayout title="Inicio">
+<Layout title="Inicio">
   <Navbar client:idle />
-
   <section class="flex flex-col items-center justify-center gap-5 py-8 md:py-10">
     <img src="/logo.svg" alt="logo" height="300" width="300" />
+    
     <div class="inline-block max-w-xl justify-center text-center">
       <span class={title()}>Compra y vende&nbsp;</span>
       <span class={title({ color: "pink" })}>productos&nbsp;</span><br />
@@ -46,6 +46,4 @@ const { success: okCats, data: categories, message: catsMsg } = await getCategor
   ) : (
     <p class="text-red-600">{catsMsg}</p>
   )}
-
-  <Footer client:idle />
-</MainLayout>
+</Layout>

@@ -13,16 +13,18 @@
     "@heroui/link": "^2.2.21",
     "@heroui/react": "^2.8.2",
     "@heroui/theme": "^2.4.20",
-    "@tailwindcss/vite": "^4.1.11",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "astro": "^5.12.9",
     "framer-motion": "^12.23.12",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.11",
     "zod": "^4.0.17",
     "zustand": "^5.0.7"
   },
-  "packageManager": "pnpm@10.8.0+sha512.0e82714d1b5b43c74610193cb20734897c1d00de89d0e18420aebc5977fa13d780a9cb05734624e81ebd81cc876cd464794850641c48b9544326b5622ca29971"
+  "packageManager": "pnpm@10.8.0+sha512.0e82714d1b5b43c74610193cb20734897c1d00de89d0e18420aebc5977fa13d780a9cb05734624e81ebd81cc876cd464794850641c48b9544326b5622ca29971",
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "tailwindcss": "^4.1.11"
+  }
 }

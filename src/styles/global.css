@@ -1,22 +1,15 @@
 /* src/styles/global.css */
 @import "tailwindcss";
 
-/* Registra HeroUI como plugin de Tailwind (v4) */
-@plugin "@heroui/theme";
-
-/* Tokens de diseño: así creas bg-custom-cream, text-custom-dark-green, etc. */
 @theme {
-  --color-custom-red: #BC4749;
-  --color-custom-light-green: #A7C957;
-  --color-custom-medium-green: #6A994E;
-  --color-custom-dark-green: #386641;
   --color-custom-cream: #F2E8CF;
+  --color-custom-dark-green: #386641;
+  --color-custom-medium-green: #6A994E;
+  --color-custom-light-green: #A7C957;
+  --color-custom-red: #BC4749;
   --color-custom-black: #111111;
-
-  /* si quieres controlar font-sans / font-mono */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-/* (opcional) fijar tamaño de iconos si algún reset los estira */
-.ui-icon { width: 1.125rem; height: 1.125rem; display: inline-block; vertical-align: middle; }
+
+/* util opcional para iconos */
+.ui-icon { width: 1.125rem; height: 1.125rem; display:inline-block; vertical-align:middle; }
