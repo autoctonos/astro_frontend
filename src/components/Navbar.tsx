@@ -6,6 +6,7 @@ import {
   NavbarItem,
   NavbarMenu,
   NavbarMenuItem,
+  NavbarMenuToggle,
   Input,
   Button,
   Link,
@@ -26,6 +27,7 @@ type NavItem = { href: string; label: string };
 export default function Navbar() {
   const [query, setQuery] = useState("");
   const [openList, setOpenList] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
   const { results, loading } = useProductosSearch(query, 2);
@@ -37,9 +39,14 @@ export default function Navbar() {
       maxWidth="xl"
       position="sticky"
       className="sticky top-0 z-50 border-b border-custom-medium-green/30 bg-custom-cream/80 backdrop-blur-md supports-[backdrop-filter]:bg-custom-cream/60"
+      onMenuOpenChange={setIsMenuOpen}
     >
 
       <NavbarContent className="basis-1/4 sm:basis-full" justify="start">
+        <NavbarMenuToggle
+          className="mr-2 lg:hidden"
+          aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+        />
         <NavbarBrand as="li" className="max-w-fit">
           <a
             className="group flex items-center gap-2 rounded-2xl p-1 transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
@@ -74,6 +81,26 @@ export default function Navbar() {
         </NavbarItem>
       </NavbarContent>
 
+      <NavbarContent className="sm:hidden" justify="end">
+        <NavbarItem>
+          <button
+            onClick={() => openCart()}
+            className="relative rounded-xl p-2 transition hover:bg-custom-light-green/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+            aria-label="Abrir carrito"
+          >
+            <CartIcon />
+            {useCartCount() > 0 && (
+              <span
+                className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-custom-red px-1 text-[10px] font-semibold text-white"
+                aria-label="Cantidad en carrito"
+              >
+                {useCartCount()}
+              </span>
+            )}
+          </button>
+        </NavbarItem>
+      </NavbarContent>
+
       <NavbarContent className="hidden basis-1/5 sm:flex sm:basis-full" justify="end">
         <NavbarItem className="hidden lg:flex">
           <div
@@ -95,6 +122,11 @@ export default function Navbar() {
               onValueChange={(v) => {
                 setQuery(v);
                 if (!openList) setOpenList(true);
+              }}
+              isClearable
+              onClear={() => {
+                setQuery("");
+                setOpenList(false);
               }}
               labelPlacement="outside"
               placeholder="Encuentra tu próximo producto…"
@@ -178,6 +210,8 @@ export default function Navbar() {
               }}
               value={query}
               onValueChange={(v) => setQuery(v)}
+              isClearable
+              onClear={() => setQuery("")}
               placeholder="Buscar…"
               startContent={
                 <span className="text-custom-medium-green">
