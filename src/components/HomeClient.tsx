@@ -12,25 +12,21 @@ export default function HomeClient() {
 
   return (
     <>
-      <section className="flex flex-col items-center justify-center gap-5 py-8 md:py-10">
-        <img src="/logo.svg" alt="logo" height={300} width={300} />
-        <div className="inline-block max-w-xl justify-center text-center">
-          <span className={title()}>Compra y vende&nbsp;</span>
-          <span className={title({ color: "pink" })}>productos&nbsp;</span>
-          <br />
-          <span className={title()}>artesanales locales</span>
-          <div className={subtitle({ class: "mt-4" })}>
-            El marketplace donde la tradición y la calidad se encuentran
-          </div>
-        </div>
+      <section className="flex flex-col items-center justify-center gap-6 py-24 text-center">
+        <h1 className={title()}>
+          Compra y vende <span className="text-custom-dark-green">productos</span> artesanales locales
+        </h1>
+        <p className={subtitle({ class: "mt-4 max-w-2xl" })}>
+          El marketplace donde la tradición y la calidad se encuentran
+        </p>
       </section>
 
       <section className="container mx-auto px-4 py-6">
         <h2 className={subtitle({ class: "mb-4 text-xl font-semibold" })}>Productos Destacados</h2>
         {prod.loading ? (
-          <div className="flex items-center gap-2 text-gray-600"><Spinner size="sm" /> Cargando productos…</div>
+          <div className="flex items-center gap-2 text-custom-black/60"><Spinner size="sm" /> Cargando productos…</div>
         ) : prod.error ? (
-          <p className="text-red-600">{prod.error}</p>
+          <p className="text-custom-red">{prod.error}</p>
         ) : (
           <ProductsList products={prod.data ?? []} />
         )}
@@ -39,9 +35,9 @@ export default function HomeClient() {
       <section className="container mx-auto px-4 py-6">
         <h2 className={subtitle({ class: "mb-4 text-xl font-semibold" })}>Categorías</h2>
         {cats.loading ? (
-          <div className="flex items-center gap-2 text-gray-600"><Spinner size="sm" /> Cargando categorías…</div>
+          <div className="flex items-center gap-2 text-custom-black/60"><Spinner size="sm" /> Cargando categorías…</div>
         ) : cats.error ? (
-          <p className="text-red-600">{cats.error}</p>
+          <p className="text-custom-red">{cats.error}</p>
         ) : (
           <CategoryList categories={cats.data ?? []} />
         )}

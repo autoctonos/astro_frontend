@@ -11,8 +11,8 @@ import CartDrawer from "@/components/cart-drawer";
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
   </head>
-  <body class="relative flex min-h-screen flex-col bg-custom-cream">
-    <main class="container mx-auto max-w-7xl flex-grow px-6 pt-16">
+  <body class="flex min-h-screen flex-col">
+    <main class="mx-auto w-full max-w-6xl flex-grow px-6 py-24">
       <slot />
       <CartDrawer client:load />
     </main>

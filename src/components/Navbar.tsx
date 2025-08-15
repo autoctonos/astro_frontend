@@ -36,7 +36,7 @@ export default function Navbar() {
     <HeroUINavbar
       maxWidth="xl"
       position="sticky"
-      className="sticky top-0 z-50 border-b border-custom-medium-green/30 bg-custom-cream/80 backdrop-blur-md supports-[backdrop-filter]:bg-custom-cream/60"
+      className="sticky top-0 z-50 border-b border-custom-dark-green/10 bg-custom-cream/90 backdrop-blur-sm"
     >
 
       <NavbarContent className="basis-1/4 sm:basis-full" justify="start">
@@ -107,9 +107,9 @@ export default function Navbar() {
             />
 
             {openList && (loading || results.length > 0) && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-2xl border border-custom-medium-green/30 bg-white shadow-xl">
+              <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-2xl border border-custom-medium-green/30 bg-custom-cream shadow-xl">
                 {loading ? (
-                  <div className="flex items-center gap-2 p-3 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 p-3 text-sm text-custom-black/60">
                     <Spinner size="sm" /> Buscando…
                   </div>
                 ) : (
@@ -166,7 +166,7 @@ export default function Navbar() {
 
 
       {/* Menú hamburguesa */}
-      <NavbarMenu className="bg-custom-cream/95 p-3">
+      <NavbarMenu className="bg-custom-cream p-3">
         <div className="mb-3">
           <div className="relative">
             <Input
@@ -187,9 +187,9 @@ export default function Navbar() {
               type="search"
             />
             {(loading || results.length > 0) && query && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-2xl border border-custom-medium-green/30 bg-white shadow-xl">
+              <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-2xl border border-custom-medium-green/30 bg-custom-cream shadow-xl">
                 {loading ? (
-                  <div className="flex items-center gap-2 p-3 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 p-3 text-sm text-custom-black/60">
                     <Spinner size="sm" /> Buscando…
                   </div>
                 ) : (
