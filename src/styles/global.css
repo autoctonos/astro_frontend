@@ -7,7 +7,38 @@
   --color-custom-light-green: #A7C957;
   --color-custom-red: #BC4749;
   --color-custom-black: #111111;
+  --font-sans: "Inter", system-ui, sans-serif;
 }
 
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-custom-cream);
+    color: var(--color-custom-black);
+    @apply antialiased;
+  }
 
-.ui-icon { width: 1.125rem; height: 1.125rem; display:inline-block; vertical-align:middle; }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-extrabold tracking-tight text-custom-dark-green;
+  }
+
+  a {
+    @apply text-custom-dark-green underline-offset-2 transition-colors;
+  }
+
+  a:hover {
+    @apply text-custom-medium-green;
+  }
+}
+
+.ui-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: inline-block;
+  vertical-align: middle;
+}
