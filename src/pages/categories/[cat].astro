@@ -1,0 +1,19 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import Navbar from "@/components/Navbar";
+import CategoryClient from "@/components/CategoryClient";
+import CategorySidebar from "@/components/categories/CategorySidebar";
+
+const { cat } = Astro.params; 
+---
+<Layout title="Categoría">
+  <Navbar client:idle />
+  <div class="mx-auto max-w-6xl px-4 py-6 grid grid-cols-1 gap-6 lg:grid-cols-[16rem_1fr]">
+    <CategorySidebar client:load currentCat={String(cat)} />
+    <div>
+      <CategoryClient client:load cat={String(cat)} />
+    </div>
+  </div>
+</Layout>
