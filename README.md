@@ -1,43 +1,42 @@
-# Astro Starter Kit: Minimal
+# Astro Frontend
 
-```sh
-npm create astro@latest -- --template minimal
+A minimal storefront built with [Astro](https://astro.build) and React. It exposes a product catalog with a client-side cart and PayU checkout integration.
+
+## Project Structure
+
 ```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
 /
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+├── public/                # Static assets
+└── src/
+    ├── api/               # TypeScript API clients for products and categories
+    ├── components/        # React components (cart, product lists, checkout, etc.)
+    ├── config/            # Site configuration
+    ├── hooks/             # Reusable React hooks
+    ├── layouts/           # Shared page layouts
+    ├── lib/               # Utility helpers (HTTP, assets, slug helpers)
+    ├── pages/             # Astro pages & API routes
+    ├── stores/            # Global state (e.g., shopping cart)
+    └── styles/            # Global CSS and Tailwind setup
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Tooling
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+| Command | Action |
+| --- | --- |
+| `npm install` | Install dependencies |
+| `npm run dev` | Start a dev server at `http://localhost:4321` |
+| `npm run build` | Build the production site to `dist/` |
+| `npm run preview` | Preview the built site locally |
+| `npm run start` | Run the built server (`node ./dist/server/entry.mjs`) |
+| `npm run astro ...` | Run Astro CLI commands like `npm run astro -- --help` |
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Features
 
-## 🧞 Commands
+### Shopping cart
 
-All commands are run from the root of the project, from a terminal:
+Items can be added from product pages and are stored in a [Zustand](https://github.com/pmndrs/zustand) store that persists to `localStorage`. The cart drawer allows updating quantities or removing items.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+### PayU checkout
 
-## 👀 Want to learn more?
+The shipping form posts to `/api/payu/prepare`, which returns the fields required by PayU. A temporary form is generated and submitted, redirecting the user to PayU for payment, after which PayU returns to `/checkout/response` with the transaction status.
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
