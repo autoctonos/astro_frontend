@@ -16,7 +16,7 @@ export default function HomeClient() {
         <img src="/logo.svg" alt="logo" height={300} width={300} />
         <div className="inline-block max-w-xl justify-center text-center">
           <span className={title()}>Compra y vende&nbsp;</span>
-          <span className={title({ color: "pink" })}>productos&nbsp;</span>
+          <span className={title({ color: "red" })}>productos&nbsp;</span>
           <br />
           <span className={title()}>artesanales locales</span>
           <div className={subtitle({ class: "mt-4" })}>
