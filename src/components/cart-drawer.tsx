@@ -1,75 +1,40 @@
-import {
-    Drawer, DrawerBody, DrawerContent, DrawerFooter, Button, Image, Badge
-} from "@heroui/react";
+import { Drawer, DrawerBody, DrawerContent, DrawerFooter, Button, Image, Badge } from "@heroui/react";
 import { CartIcon } from "@/components/icons";
-import { 
-    useCartStore, useCartTotal, incCart, decCart, removeFromCart, clearCart 
-} from "@/stores/cart";
+import { useCartStore, useCartTotal, incCart, decCart, removeFromCart, clearCart } from "@/stores/cart";
 import { asset } from "@/lib/assets";
-
 
 function formatCOP(n: number) {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 }
 
-export default function CartDrawer() {
+export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
 
+    const isOpen = useCartStore((s) => s.isOpen);
+    const close = useCartStore((s) => s.close);
+    const items = useCartStore((s) => s.items);
+    const total = useCartTotal();
 
-  const isOpen = useCartStore((s) => s.isOpen);
-  const close = useCartStore((s) => s.close);
-  const items = useCartStore((s) => s.items);
-  const total = useCartTotal();
-  return (
-    <Drawer isOpen={isOpen} 
-        onOpenChange={(open) => (open ? null : close())}
-        placement="right"
-        size="md"
-        isDismissable={true}
-    >
-      <DrawerContent className="bg-custom-cream absolute top-20 right-17 w-[28rem] max-w-[calc(100vw-2rem)] rounded-xl shadow-xl border border-custom-medium-green/20">
-        <div className="flex items-center justify-between border-b border-custom-medium-green/20 p-4">
-          <div className="flex items-center gap-3">
-            <CartIcon className="h-6 w-6 text-custom-dark-green" />
-            <h2 className="text-xl font-bold text-custom-dark-green">Tu Carrito</h2>
-          </div>
-          <Badge 
-            className="bg-custom-medium-green text-white" 
-            variant="solid"
-          >
-            {items.length} {items.length === 1 ? 'producto' : 'productos'}
-          </Badge>
-        </div>
-        <DrawerBody className="p-4 max-h-[70vh] overflow-y-auto">
-          {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-custom-medium-green/30 p-8 text-center">
-              <CartIcon className="h-12 w-12 text-custom-medium-green/50" />
-              <p className="mt-4 text-lg font-medium text-custom-black/70">
-                Tu carrito está vacío
-              </p>
-              <p className="mt-1 text-sm text-custom-black/50">
-                Agrega productos para comenzar
-              </p>
-              <Button 
-                className="mt-4 btn-primary" 
-                onPress={close}
-              >
-                Seguir comprando
-              </Button>
-            </div>
-          ) : (
-            <ul className="space-y-4">
-              {items.map((it) => (
-                <li
-                  key={it.id}
-                  className="grid grid-cols-[80px_1fr_auto] gap-4 rounded-xl border border-custom-medium-green/20 bg-white p-4 shadow-sm transition-all hover:shadow-md"
-                >
-                  <div className="h-20 w-20 overflow-hidden rounded-lg border border-custom-medium-green/10">
-                    {it.image ? (
-                      <Image
-                        src={asset(it.image)}
-                        alt={it.name}
-                        className="h-full w-full object-cover"
-                      />
+    if (!showInCheckout && typeof window !== 'undefined' && window.location.pathname.startsWith('/checkout')) {
+        return null;
+    }
+
+    const handleCheckout = () => {
+        close(); 
+    };
+
+    return (
+        <Drawer isOpen={isOpen} onOpenChange={(o) => (o ? null : close())} placement="right" size="md">
+            <DrawerContent className="bg-custom-cream">
+                <DrawerBody className="p-4">
+                    <div className="mb-4 flex items-center gap-2 text-custom-dark-green">
+                        <CartIcon /> <span className="text-lg font-semibold">Tu carrito</span>
+                        <Badge className="ml-auto" variant="flat">{items.length}</Badge>
+                    </div>
+
+                    {items.length === 0 ? (
+                        <div className="rounded-2xl border border-custom-medium-green/30 p-6 text-center text-custom-black/70">
+                            Aún no has agregado productos.
+                        </div>
                     ) : (
                       <div className="grid h-full w-full place-items-center bg-custom-cream text-xs text-gray-500">
                         Sin imagen
@@ -132,8 +97,17 @@ export default function CartDrawer() {
                     <div className="flex items-center text-base font-medium text-custom-black h-full">
                     Total
                     </div>
-                    <div className="flex items-center text-lg font-bold text-custom-dark-green h-full">
-                    {formatCOP(total)}
+                    <div className="flex w-full gap-2">
+                        <Button variant="flat" className="flex-1" onPress={clearCart}>Vaciar</Button>
+                        <a
+                            href="/checkout/shipping/"
+                            className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                            onClick={handleCheckout}
+                        >
+                            <Button className="flex-1 bg-custom-dark-green text-custom-cream hover:bg-custom-medium-green">
+                                Ir a pagar
+                            </Button>
+                        </a>
                     </div>
                 </div>
                 <div className="flex w-full gap-3">

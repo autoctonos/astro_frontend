@@ -22,7 +22,7 @@ export default function SearchResults({
   onItemClick?: () => void;
 }) {
   if (items.length === 0) {
-    return <li className="p-3 text-sm text-gray-600">Sin resultados</li>;
+    return <li className="p-3 text-sm text-white/80">Sin resultados</li>;
   }
 
   return (
@@ -45,8 +45,8 @@ export default function SearchResults({
                 loading="lazy"
               />
               <div className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-custom-black">{p.nombre}</span>
-                <span className="text-xs text-gray-600">{formatPrice(p.precio)}</span>
+                <span className="block truncate font-medium text-white">{p.nombre}</span>
+                <span className="text-xs text-white/90">{formatPrice(p.precio)}</span>
               </div>
             </a>
           </li>

@@ -14,8 +14,8 @@ export default function ProductImages({ images, productName }: { images: Imagen[
   const src = normalizeImage(images[current]?.url_imagen);
 
   return (
-    <div className="w-full">
-      <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 shadow-sm">
+    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto">
+      <div className="aspect-square w-full overflow-hidden rounded-2xl border border-custom-medium-green/80 shadow-sm">
         <img src={src} alt={productName} className="h-full w-full object-cover" loading="lazy" />
       </div>
 

@@ -1,13 +1,103 @@
 @import "tailwindcss";
 
 @theme {
-  --color-custom-cream: #F2E8CF;
-  --color-custom-dark-green: #386641;
-  --color-custom-medium-green: #6A994E;
-  --color-custom-light-green: #A7C957;
   --color-custom-red: #BC4749;
+  --color-custom-light-green: #A7C957;
+  --color-custom-medium-green: #6A994E;
+  --color-custom-dark-green: #386641;
+  --color-custom-cream: #F2E8CF;
   --color-custom-black: #111111;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
+@layer base {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px theme('colors.custom.cream') inset !important;
+    -webkit-text-fill-color: theme('colors.gray.800') !important;
+    background-color: theme('colors.custom.cream') !important;
+  }
+  * {
+    box-sizing: border-box;
+  }
 
-.ui-icon { width: 1.125rem; height: 1.125rem; display:inline-block; vertical-align:middle; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-custom-cream text-custom-black font-sans;
+    line-height: 1.6;
+  }
+
+  *:focus-visible {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .container-ecommerce {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center
+           bg-custom-dark-green text-white font-medium
+           px-4 py-2.5 rounded-lg text-sm
+           hover:bg-custom-medium-green 
+           active:scale-[0.98]
+           transition-all duration-200
+           focus-visible:ring-2 focus-visible:ring-custom-medium-green;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center
+           bg-custom-light-green text-custom-dark-green font-medium
+           px-4 py-2.5 rounded-lg text-sm
+           hover:bg-custom-medium-green hover:text-white
+           active:scale-[0.98]
+           transition-all duration-200;
+  }
+
+  .product-card {
+    @apply bg-white rounded-lg shadow-sm overflow-hidden
+           hover:shadow-md transition-shadow duration-300
+           border border-gray-100;
+  }
+
+  .nav-link {
+    @apply text-gray-700 hover:text-custom-dark-green 
+           transition-colors duration-200 font-medium;
+  }
+
+  .badge-sale {
+    @apply bg-custom-red text-white text-xs font-bold px-2 py-1 rounded-full;
+  }
+
+  .badge-new {
+    @apply bg-custom-light-green text-custom-dark-green text-xs font-bold px-2 py-1 rounded-full;
+  }
+}
+
+@layer utilities {
+  .products-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+  }
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
