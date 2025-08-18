@@ -6,8 +6,6 @@ export const siteConfig = {
   navItems: [
   ],
   navMenuItems: [
-    { href: "/acerca", label: "Acerca de" },
-    { href: "/faq", label: "Preguntas frecuentes" },
   ],
 } as const satisfies {
   links: { twitter: string };

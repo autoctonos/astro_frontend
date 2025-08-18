@@ -28,9 +28,9 @@ export default function ProductActions({
   const max = Math.max(1, stock ?? 99);
 
   return (
-    <div className="rounded-2xl border border-gray-200 p-4 shadow-sm">
+    <div className="rounded-2xl border border-custom-medium-green/80 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-2xl font-semibold text-custom-dark-green">{formatCOP(price)}</div>
+        <div className="text-2xl font-semibold text-custom-dark-green">Precio: {formatCOP(price)}</div>
         {typeof stock === "number" && (
           <span className="rounded-full border border-custom-medium-green/40 bg-custom-light-green/10 px-2 py-0.5 text-xs text-custom-dark-green">
             Stock: {stock}
@@ -38,7 +38,7 @@ export default function ProductActions({
         )}
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex items-center justify-center gap-2">
         <Button
           size="sm"
           variant="flat"
@@ -48,7 +48,7 @@ export default function ProductActions({
         >
           -
         </Button>
-        <span className="w-10 rounded-md border border-gray-200 bg-white text-center text-base">{qty}</span>
+        <span className="w-10 rounded-md border border-custom-medium-green/80 bg-custom-cream text-center text-base">{qty}</span>
         <Button
           size="sm"
           variant="flat"

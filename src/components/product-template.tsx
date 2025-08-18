@@ -5,7 +5,7 @@ import type { Producto } from "@/api/schemas/products";
 
 export default function ProductTemplate({ product }: { product: Producto }) {
   return (
-    <section className="mx-auto my-6 max-w-7xl rounded-3xl border border-gray-200 bg-white px-4 py-6 shadow-sm sm:px-6">
+    <section className="mx-auto my-6 max-w-7xl rounded-3xl border border-custom-medium-green/80 bg-custom-cream px-4 py-6 shadow-sm sm:px-6">
       <h1 className="mb-2 text-2xl font-bold text-custom-dark-green">{product.nombre}</h1>
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
         <div className="w-full sm:w-2/3">
@@ -22,7 +22,7 @@ export default function ProductTemplate({ product }: { product: Producto }) {
             productName={product.nombre}
             image={product.imagenes?.[0]?.url_imagen}
           />
-          <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+          <div className="mt-4 rounded-2xl border border-custom-medium-green/80 p-4">
             <ProductDescription description={(product as any).descripcion} />
           </div>
         </div>

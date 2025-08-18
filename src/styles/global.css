@@ -13,6 +13,19 @@
 }
 
 @layer base {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px theme('colors.custom.cream') inset !important;
+    -webkit-text-fill-color: theme('colors.gray.800') !important;
+    background-color: theme('colors.custom.cream') !important;
+  }
   * {
     box-sizing: border-box;
   }
@@ -29,18 +42,14 @@
 
   *:focus-visible {
     @apply outline-none;
-    /* Quitamos el ring verde que se aplicaba globalmente */
   }
 }
 
-/* Componentes reutilizables para E-Commerce */
 @layer components {
-  /* Contenedor principal */
   .container-ecommerce {
     @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
   }
 
-  /* Botones principales */
   .btn-primary {
     @apply inline-flex items-center justify-center
            bg-custom-dark-green text-white font-medium
@@ -60,20 +69,17 @@
            transition-all duration-200;
   }
 
-  /* Cards de productos */
   .product-card {
     @apply bg-white rounded-lg shadow-sm overflow-hidden
            hover:shadow-md transition-shadow duration-300
            border border-gray-100;
   }
 
-  /* Navegación */
   .nav-link {
     @apply text-gray-700 hover:text-custom-dark-green 
            transition-colors duration-200 font-medium;
   }
 
-  /* Badges */
   .badge-sale {
     @apply bg-custom-red text-white text-xs font-bold px-2 py-1 rounded-full;
   }
@@ -83,19 +89,14 @@
   }
 }
 
-/* Utilidades específicas */
 @layer utilities {
-  /* Grid para productos */
   .products-grid {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
   }
-
-  /* Skeleton loading */
   .skeleton {
     @apply animate-pulse bg-gray-200 rounded;
   }
 
-  /* Texto balanceado */
   .text-balance {
     text-wrap: balance;
   }

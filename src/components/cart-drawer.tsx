@@ -1,24 +1,27 @@
-import {
-    Drawer, DrawerBody, DrawerContent, DrawerFooter, Button, Image, Badge
-} from "@heroui/react";
+import { Drawer, DrawerBody, DrawerContent, DrawerFooter, Button, Image, Badge } from "@heroui/react";
 import { CartIcon } from "@/components/icons";
-import {
-    useCartStore, useCartTotal, incCart, decCart, removeFromCart, clearCart
-} from "@/stores/cart";
+import { useCartStore, useCartTotal, incCart, decCart, removeFromCart, clearCart } from "@/stores/cart";
 import { asset } from "@/lib/assets";
-
 
 function formatCOP(n: number) {
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 }
 
-export default function CartDrawer() {
-
+export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
 
     const isOpen = useCartStore((s) => s.isOpen);
     const close = useCartStore((s) => s.close);
     const items = useCartStore((s) => s.items);
     const total = useCartTotal();
+
+    if (!showInCheckout && typeof window !== 'undefined' && window.location.pathname.startsWith('/checkout')) {
+        return null;
+    }
+
+    const handleCheckout = () => {
+        close(); 
+    };
+
     return (
         <Drawer isOpen={isOpen} onOpenChange={(o) => (o ? null : close())} placement="right" size="md">
             <DrawerContent className="bg-custom-cream">
@@ -74,6 +77,7 @@ export default function CartDrawer() {
                         <a
                             href="/checkout/shipping/"
                             className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                            onClick={handleCheckout}
                         >
                             <Button className="flex-1 bg-custom-dark-green text-custom-cream hover:bg-custom-medium-green">
                                 Ir a pagar
