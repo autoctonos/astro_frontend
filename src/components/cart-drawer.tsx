@@ -4,7 +4,7 @@ import { useCartStore, useCartTotal, incCart, decCart, removeFromCart, clearCart
 import { asset } from "@/lib/assets";
 
 function formatCOP(n: number) {
-    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 }
 
 export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
@@ -36,41 +36,66 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                             Aún no has agregado productos.
                         </div>
                     ) : (
-                        <ul className="space-y-3">
-                            {items.map((it) => (
-                                <li key={it.id} className="grid grid-cols-[64px_1fr_auto] gap-3 rounded-2xl border border-custom-medium-green/30 bg-white p-3">
-                                    <div className="h-16 w-16 overflow-hidden rounded-xl border">
-                                        {it.image ? (
-                                            <Image src={asset(it.image)} alt={it.name} className="h-16 w-16 object-cover" />
-                                        ) : (
-                                            <div className="grid h-16 w-16 place-items-center text-xs text-gray-500">Sin imagen</div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium text-custom-dark-green">{it.name}</div>
-                                        <div className="text-sm text-gray-600">{formatCOP(it.price)}</div>
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <Button size="sm" variant="flat" onPress={() => decCart(it.id)}>-</Button>
-                                            <span className="w-9 text-center">{it.quantity}</span>
-                                            <Button size="sm" variant="flat" onPress={() => incCart(it.id)}>+</Button>
-                                            <Button size="sm" variant="light" className="ml-2 text-red-600" onPress={() => removeFromCart(it.id)}>
-                                                Quitar
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="text-right font-semibold text-custom-dark-green">
-                                        {formatCOP(it.price * it.quantity)}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                      <div className="grid h-full w-full place-items-center bg-custom-cream text-xs text-gray-500">
+                        Sin imagen
+                      </div>
                     )}
-                </DrawerBody>
-
-                <DrawerFooter className="border-t border-custom-medium-green/20 bg-custom-cream/60">
-                    <div className="flex w-full items-center justify-between">
-                        <div className="text-sm text-gray-600">Subtotal</div>
-                        <div className="text-lg font-semibold text-custom-dark-green">{formatCOP(total)}</div>
+                  </div>
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-semibold text-custom-dark-green line-clamp-2">
+                        {it.name}
+                      </h3>
+                      <p className="text-sm text-custom-medium-green">
+                        {formatCOP(it.price)}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="flat" 
+                        className="min-w-8 bg-custom-cream hover:bg-custom-light-green"
+                        onPress={() => decCart(it.id)}
+                        isDisabled={it.quantity <= 1}
+                      >
+                        -
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium">
+                        {it.quantity}
+                      </span>
+                      <Button 
+                        size="sm" 
+                        variant="flat" 
+                        className="min-w-8 bg-custom-cream hover:bg-custom-light-green"
+                        onPress={() => incCart(it.id)}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end justify-between">
+                    <p className="text-right font-bold text-custom-dark-green">
+                      {formatCOP(it.price * it.quantity)}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      className="text-xs text-custom-red hover:text-custom-red/80"
+                      onPress={() => removeFromCart(it.id)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DrawerBody>
+        {items.length > 0 && (
+            <DrawerFooter className="border-t border-custom-medium-green/20 bg-white/95 px-4 py-3">
+                <div className="flex w-full items-center justify-between mb-3 h-10">
+                    <div className="flex items-center text-base font-medium text-custom-black h-full">
+                    Total
                     </div>
                     <div className="flex w-full gap-2">
                         <Button variant="flat" className="flex-1" onPress={clearCart}>Vaciar</Button>
@@ -84,8 +109,25 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                             </Button>
                         </a>
                     </div>
-                </DrawerFooter>
-            </DrawerContent>
-        </Drawer>
-    );
+                </div>
+                <div className="flex w-full gap-3">
+                    <Button 
+                    variant="flat"
+                    className="flex-1 h-10 px-3 rounded-lg bg-custom-cream border border-custom-medium-green/30 text-custom-red hover:bg-custom-red/5 hover:border-custom-red/40 active:bg-custom-red/10 transition-all font-medium text-sm flex items-center justify-center"
+                    onPress={clearCart}
+                    >
+                        Vaciar carrito
+                    </Button>
+                    <Button 
+                    className="flex-1 h-10 px-3 rounded-lg bg-custom-dark-green text-white hover:bg-custom-medium-green active:scale-[0.98] transition-all font-medium text-sm flex items-center justify-center"
+                    onPress={() => window.location.href = "/checkout/shipping/"}
+                    >
+                        Continuar compra
+                    </Button>
+                </div>
+            </DrawerFooter>
+        )}
+      </DrawerContent>
+    </Drawer>
+  );
 }
