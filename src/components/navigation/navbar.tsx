@@ -192,7 +192,7 @@ export default function Navbar() {
 
      {/* Menú hamburguesa */}
     <NavbarMenu 
-      className="bg-custom-cream p-4 pt-8 backdrop-blur-lg w-full sm:w-80 fixed right-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto"
+      className="bg-custom-cream p-4 pt-8 backdrop-blur-lg w-full sm:w-80 fixed right-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-[1000]"
     >
       <div className="mb-6 mt-10">
         <div className="relative">

@@ -12,13 +12,22 @@ function formatCOP(n: number) {
 return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 }
 
-export default function CartDrawer() {
+export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
 
 
 const isOpen = useCartStore((s) => s.isOpen);
 const close = useCartStore((s) => s.close);
 const items = useCartStore((s) => s.items);
 const total = useCartTotal();
+
+if (!showInCheckout && typeof window !== 'undefined' && window.location.pathname.startsWith('/checkout')) {
+        return null;
+    }
+
+const handleCheckout = () => {
+    close(); 
+};
+
 return (
   <Drawer isOpen={isOpen} 
       onOpenChange={(open) => (open ? null : close())}
@@ -26,7 +35,7 @@ return (
       size="md"
       isDismissable={true}
   >
-    <DrawerContent className="bg-custom-cream absolute top-20 right-17 w-[28rem] max-w-[calc(100vw-2rem)] rounded-xl shadow-xl border border-custom-medium-green/20">
+    <DrawerContent className="bg-custom-cream lg:absolute lg:top-20 lg:right-4 w-full lg:w-[28rem] rounded-xl shadow-xl border border-custom-medium-green/20">
       <div className="flex items-center justify-between border-b border-custom-medium-green/20 p-4">
         <div className="flex items-center gap-3">
           <CartIcon className="h-6 w-6 text-custom-dark-green" />
@@ -141,6 +150,7 @@ return (
                   variant="flat"
                   className="flex-1 h-10 px-3 rounded-lg bg-custom-cream border border-custom-medium-green/30 text-custom-red hover:bg-custom-red/5 hover:border-custom-red/40 active:bg-custom-red/10 transition-all font-medium text-sm flex items-center justify-center"
                   onPress={clearCart}
+                  onClick={handleCheckout}
                   >
                       Vaciar carrito
                   </Button>
