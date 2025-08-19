@@ -1,6 +1,8 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-const query = Astro.url.searchParams; // PayU redirige por GET con varios parámetros
+import PaymentConfirmation from "@/components/payment-confirmation";
+
+const query = Astro.url.searchParams;
 const ref = query.get("referenceCode");
 const state = query.get("transactionState") || query.get("state_pol");
 const message = query.get("message") || query.get("response_message_pol");
@@ -11,6 +13,10 @@ const message = query.get("message") || query.get("response_message_pol");
     <p class="mb-6 text-gray-700">Referencia: <strong>{ref}</strong></p>
     <p class="mb-8">Estado: <strong>{state}</strong></p>
     <p class="mb-8">{message}</p>
-    <a class="rounded-xl bg-custom-dark-green px-4 py-2 text-white" href="/">Volver al inicio</a>
+    <a class="rounded-xl bg-custom-dark-green px-6 py-3 text-white font-semibold hover:bg-custom-medium-green transition-colors" href="/">
+      Volver al inicio
+    </a>
+    
+    <PaymentConfirmation client:load />
   </div>
 </Layout>
