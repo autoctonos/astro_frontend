@@ -1,9 +1,12 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
+import { Torus, Donut, Milk, Leaf, Coffee, Cookie, type LucideIcon } from "lucide-react";
 import { fetchCategorias } from "@/api/categories";
 import type { Categoria } from "@/api/schemas/categories";
 import clsx from "clsx";
+
+const ICONS: LucideIcon[] = [Torus, Milk, Donut, Coffee, Leaf, Cookie];
 
 export default function Drop({ title }: { title: string }) {
   const [data, setData] = useState<Categoria[]>([]);
@@ -25,10 +28,6 @@ export default function Drop({ title }: { title: string }) {
     return () => { alive = false; };
   }, []);
 
-  if (loading) return <p className="text-sm text-gray-500">Cargando categorías…</p>;
-  if (err) return <p className="text-sm text-red-600">Error: {err}</p>;
-  if (!data.length) return <p className="text-sm text-gray-500">No hay categorías</p>;
-
   return (
     <Dropdown>
       <DropdownTrigger>
@@ -36,9 +35,11 @@ export default function Drop({ title }: { title: string }) {
           size="sm"
           variant="light"
           className={clsx(
-            "btn-primary", 
+            "btn-primary",
             "flex items-center gap-1.5",
-            "text-white" 
+            "text-white",
+            "hover:bg-custom-medium-green hover:text-white",
+            "active:scale-[0.98] transition-all duration-200"
           )}
         >
           {title}
@@ -57,16 +58,42 @@ export default function Drop({ title }: { title: string }) {
           base: "rounded-lg px-4 py-2 data-[hover=true]:bg-custom-cream/80",
           title: "text-sm font-medium",
         }}
-        onAction={(key: React.Key) => { if (key) window.location.href = `/categories/${String(key)}`; }}
+        onAction={(key: React.Key) => {
+          if (key && !String(key).startsWith("_")) window.location.href = `/categories/${String(key)}`;
+        }}
       >
-        {data.map((item) => {
-         const key = String(item.id ?? item.nombre);
-          return (
-            <DropdownItem key={key} id={key} className="transition-colors duration-200 hover:bg-custom-medium-green/20 hover:text-custom-dark-green" >
-              <span className="truncate">{item.nombre}</span>
-            </DropdownItem>
-          );
-        })}
+        {loading ? (
+          <DropdownItem key="_loading" isDisabled className="text-white/90">
+            Cargando categorías…
+          </DropdownItem>
+        ) : err ? (
+          <DropdownItem key="_error" isDisabled className="text-red-300">
+            Error: {err}
+          </DropdownItem>
+        ) : !data.length ? (
+          <DropdownItem key="_empty" isDisabled className="text-white/80">
+            No hay categorías
+          </DropdownItem>
+        ) : (
+          data.map((item, index) => {
+            const key = String(item.id ?? item.nombre);
+            const Icon = ICONS[index % ICONS.length];
+            return (
+              <DropdownItem
+                key={key}
+                id={key}
+                startContent={
+                  <span className="flex size-6 items-center justify-center rounded-lg bg-custom-light-green/20 text-custom-cream">
+                    <Icon className="size-3" />
+                  </span>
+                }
+                className="transition-colors duration-200 hover:bg-custom-medium-green/20 hover:text-custom-dark-green"
+              >
+                <span className="truncate">{item.nombre}</span>
+              </DropdownItem>
+            );
+          })
+        )}
       </DropdownMenu>
     </Dropdown>
   );

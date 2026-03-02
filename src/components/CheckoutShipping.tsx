@@ -1,6 +1,23 @@
 import { useState } from "react";
-import { Input, Button, Select, SelectItem, Textarea } from "@heroui/react";
-import { useCartStore, useCartTotal } from "@/stores/cart";
+import {
+  User,
+  MapPin,
+  CreditCard,
+  ChevronRight,
+  Check,
+  Mail,
+  Phone,
+  FileText,
+  StickyNote,
+  Truck,
+  ShieldCheck,
+  Lock,
+  Tag,
+  Package,
+  Leaf,
+} from "lucide-react";
+import { useCartStore, formatCOP } from "@/stores/cart";
+import { asset } from "@/lib/assets";
 
 type Buyer = {
   fullName: string;
@@ -18,18 +35,34 @@ type Shipping = {
   zip?: string;
 };
 
-const DOC_TYPES = ["CC", "CE", "NIT", "Passport"];
-const CO_DEPARTMENTS = [
-  "Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare",
-  "Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena",
-  "Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia",
-  "Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"
+const DOC_TYPES = [
+  { value: "CC", label: "Cédula de Ciudadanía" },
+  { value: "CE", label: "Cédula de Extranjería" },
+  { value: "NIT", label: "NIT" },
+  { value: "Passport", label: "Pasaporte" },
 ];
+
+const CO_DEPARTMENTS = [
+  "Amazonas", "Antioquia", "Arauca", "Atlántico", "Bogotá D.C.", "Bolívar", "Boyacá", "Caldas",
+  "Caquetá", "Casanare", "Cauca", "Cesar", "Chocó", "Córdoba", "Cundinamarca", "Guainía",
+  "Guaviare", "Huila", "La Guajira", "Magdalena", "Meta", "Nariño", "Norte de Santander",
+  "Putumayo", "Quindío", "Risaralda", "San Andrés y Providencia", "Santander", "Sucre",
+  "Tolima", "Valle del Cauca", "Vaupés", "Vichada",
+];
+
+const STEPS = [
+  { id: 1, label: "Datos", icon: User },
+  { id: 2, label: "Envío", icon: MapPin },
+  { id: 3, label: "Pago", icon: CreditCard },
+];
+
+const FREE_SHIPPING_MIN = 200000;
+const SHIPPING_COST = 15000;
 
 export default function CheckoutShipping() {
   const items = useCartStore((s) => s.items);
-  const total = useCartTotal();
 
+  const [currentStep] = useState(1);
   const [buyer, setBuyer] = useState<Buyer>({
     fullName: "",
     email: "",
@@ -37,7 +70,6 @@ export default function CheckoutShipping() {
     docType: "",
     docNumber: "",
   });
-
   const [shipping, setShipping] = useState<Shipping>({
     country: "CO",
     state: "Cundinamarca",
@@ -45,10 +77,19 @@ export default function CheckoutShipping() {
     address: "",
     zip: "",
   });
-
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
   const disabled = items.length === 0 || submitting;
+
+  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const savings = items.reduce(
+    (s, i) => s + (i.originalPrice && i.originalPrice > i.price ? (i.originalPrice - i.price) * i.quantity : 0),
+    0
+  );
+  const shippingCost = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
+  const total = subtotal - savings + shippingCost;
+  const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
   async function goToPayU() {
     setSubmitting(true);
@@ -56,18 +97,12 @@ export default function CheckoutShipping() {
       const payload = {
         buyer,
         shipping,
-        items: items.map((it) => ({
-          id: it.id,
-          name: it.name,
-          price: it.price,
-          quantity: it.quantity,
-        })),
+        items: items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity })),
         description: `Compra Autóctonos (${items.length} ítems)`,
         currency: "COP",
         tax: 0,
         taxReturnBase: 0,
       };
-
       const res = await fetch("/api/payu/prepare", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -79,7 +114,7 @@ export default function CheckoutShipping() {
       const form = document.createElement("form");
       form.method = "POST";
       form.action = data.action;
-      Object.entries(data.fields as Record<string, string>).forEach(([k, v]) => {
+      Object.entries((data.fields as Record<string, string>) || {}).forEach(([k, v]) => {
         if (v == null || v === "") return;
         const input = document.createElement("input");
         input.type = "hidden";
@@ -87,7 +122,6 @@ export default function CheckoutShipping() {
         input.value = String(v);
         form.appendChild(input);
       });
-
       if (notes) {
         const input = document.createElement("input");
         input.type = "hidden";
@@ -95,607 +129,395 @@ export default function CheckoutShipping() {
         input.value = notes.slice(0, 250);
         form.appendChild(input);
       }
-
       document.body.appendChild(form);
       form.submit();
-    } catch (e: any) {
-      alert(e.message || "Error inesperado.");
+    } catch (e: unknown) {
+      alert((e as Error)?.message || "Error inesperado.");
       setSubmitting(false);
     }
   }
 
+  const handleBuyer = (field: keyof Buyer, value: string) =>
+    setBuyer((prev) => ({ ...prev, [field]: value }));
+  const handleShipping = (field: keyof Shipping, value: string) =>
+    setShipping((prev) => ({ ...prev, [field]: value }));
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_420px]">
-      {/* Formulario */}
-      <div className="space-y-6 rounded-2xl border border-custom-medium-green/30 bg-custom-cream p-6 shadow-sm">
-        <h2 className="text-2xl font-bold text-custom-dark-green mb-6">Información del comprador</h2>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Input
-            label="Nombre completo"
-            value={buyer.fullName}
-            onValueChange={(v) => setBuyer({ ...buyer, fullName: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium" 
-            }}
-          />
-
-          <Select
-            label="Tipo de documento"
-            selectedKeys={[buyer.docType]}
-            onSelectionChange={(k) => setBuyer({ ...buyer, docType: Array.from(k)[0] as string })}
-            className="w-full"
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700", 
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              trigger: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus:ring-2",
-                "focus:ring-custom-medium-green",
-                "focus:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1",
-                "text-left",
-                "pr-8"
-              ],
-              value: "text-gray-800 text-base pt-1 font-medium",
-              popoverContent: [
-                "rounded-lg",
-                "shadow-lg",
-                "border",
-                "border-custom-medium-green",
-                "bg-custom-dark-green"
-              ],
-              selectorIcon: [
-                "text-gray-700",
-                "right-3",
-                "left-auto",
-                "absolute",
-                "top-1/2",
-                "-translate-y-1/2"
-              ]
-            }}
-          >
-            {DOC_TYPES.map((d) => (
-              <SelectItem 
-                key={d}
-                classNames={{
-                  base: "hover:bg-custom-medium-green", 
-                  title: "text-white"
-                }}
-              >
-                {d}
-              </SelectItem>
-            ))}
-          </Select>
-
-          <Input
-            type="Ndocument"
-            label="N° documento"
-            value={buyer.docNumber}
-            onValueChange={(v) => setBuyer({ ...buyer, docNumber: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
-          <Input
-            type="email"
-            label="Email"
-            value={buyer.email}
-            onValueChange={(v) => setBuyer({ ...buyer, email: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [ "absolute", "text-gray-700", "text-sm", "top-2", "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
-
-          <Input
-            label="Teléfono"
-            value={buyer.phone}
-            onValueChange={(v) => setBuyer({ ...buyer, phone: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
+    <section className="py-8 lg:py-14">
+      <div className="container-ecommerce max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-custom-dark-green text-balance md:text-3xl">
+            Datos de envío
+          </h1>
+          <p className="mt-1.5 text-sm text-custom-black/70">
+            Completa tu información para finalizar la compra
+          </p>
         </div>
 
-        <h2 className="mt-6 text-xl font-bold text-custom-dark-green">Dirección de envío</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select
-            label="País"
-            selectedKeys={new Set([shipping.country])}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string || "CO";
-              setShipping({ ...shipping, country: selected });
-            }}
-            className="w-full"
-            isRequired
-            disallowEmptySelection
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              trigger: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus:ring-2",
-                "focus:ring-custom-medium-green",
-                "focus:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1",
-                "text-left",
-                "pr-8"
-              ],
-              value: "text-gray-800 text-base pt-1 font-medium",
-              popoverContent: [
-                "rounded-lg",
-                "shadow-lg",
-                "border",
-                "border-custom-medium-green",
-                "bg-custom-dark-green"
-              ],
-              selectorIcon: [
-                "text-gray-700",
-                "right-3",
-                "left-auto",
-                "absolute",
-                "top-1/2",
-                "-translate-y-1/2"
-              ]
-            }}
-          >
-            <SelectItem 
-              key="CO"
-              classNames={{
-                base: "hover:bg-custom-medium-green",
-                title: "text-white"
-              }}
-            >
-              Colombia
-            </SelectItem>
-          </Select>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5 lg:gap-8">
+          {/* Form */}
+          <div className="flex flex-col gap-6 lg:col-span-3">
+            {/* Comprador */}
+            <div className="relative overflow-hidden rounded-2xl">
+              <div className="absolute inset-0 rounded-2xl border border-white/55 bg-white/50 shadow-sm backdrop-blur-2xl" />
+              <div className="relative p-6 lg:p-8">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-custom-dark-green/10">
+                    <User className="size-4 text-custom-dark-green" />
+                  </div>
+                  <h2 className="text-lg font-bold text-custom-dark-green">
+                    Información del comprador
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <InputField
+                    icon={<User className="size-4" />}
+                    label="Nombre completo"
+                    value={buyer.fullName}
+                    onChange={(v) => handleBuyer("fullName", v)}
+                    placeholder="Tu nombre completo"
+                  />
+                  <SelectField
+                    icon={<FileText className="size-4" />}
+                    label="Tipo de documento"
+                    value={buyer.docType}
+                    onChange={(v) => handleBuyer("docType", v)}
+                    options={DOC_TYPES}
+                    placeholder="Seleccionar"
+                  />
+                  <InputField
+                    icon={<FileText className="size-4" />}
+                    label="N. documento"
+                    value={buyer.docNumber}
+                    onChange={(v) => handleBuyer("docNumber", v)}
+                    placeholder="123456789"
+                  />
+                  <InputField
+                    icon={<Mail className="size-4" />}
+                    label="Email"
+                    type="email"
+                    value={buyer.email}
+                    onChange={(v) => handleBuyer("email", v)}
+                    placeholder="tu.email@ejemplo.com"
+                  />
+                  <InputField
+                    icon={<Phone className="size-4" />}
+                    label="Teléfono"
+                    value={buyer.phone}
+                    onChange={(v) => handleBuyer("phone", v)}
+                    placeholder="+57 300 000 0000"
+                    className="sm:col-span-1"
+                  />
+                </div>
+              </div>
+            </div>
 
-          <Select
-            label="Departamento"
-            selectedKeys={new Set([shipping.state])}
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string || "Cundinamarca";
-              setShipping({ ...shipping, state: selected });
-            }}
-            className="w-full"
-            isRequired
-            disallowEmptySelection
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              trigger: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus:ring-2",
-                "focus:ring-custom-medium-green",
-                "focus:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1",
-                "text-left",
-                "pr-8"
-              ],
-              value: "text-gray-800 text-base pt-1 font-medium",
-              popoverContent: [
-                "rounded-lg",
-                "shadow-lg",
-                "border",
-                "border-custom-medium-green",
-                "bg-custom-dark-green"
-              ],
-              selectorIcon: [
-                "text-gray-700",
-                "right-3",
-                "left-auto",
-                "absolute",
-                "top-1/2",
-                "-translate-y-1/2"
-              ]
-            }}
-          >
-            {CO_DEPARTMENTS.map((d) => (
-              <SelectItem 
-                key={d}
-                classNames={{
-                  base: "hover:bg-custom-medium-green",
-                  title: "text-white"
-                }}
-              >
-                {d}
-              </SelectItem>
-            ))}
-          </Select>
+            {/* Dirección */}
+            <div className="relative overflow-hidden rounded-2xl">
+              <div className="absolute inset-0 rounded-2xl border border-white/55 bg-white/50 shadow-sm backdrop-blur-2xl" />
+              <div className="relative p-6 lg:p-8">
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-custom-dark-green/10">
+                    <MapPin className="size-4 text-custom-dark-green" />
+                  </div>
+                  <h2 className="text-lg font-bold text-custom-dark-green">
+                    Dirección de envío
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <SelectField
+                    icon={<MapPin className="size-4" />}
+                    label="País"
+                    value={shipping.country}
+                    onChange={(v) => handleShipping("country", v)}
+                    options={[{ value: "CO", label: "Colombia" }]}
+                  />
+                  <SelectField
+                    icon={<MapPin className="size-4" />}
+                    label="Departamento"
+                    value={shipping.state}
+                    onChange={(v) => handleShipping("state", v)}
+                    options={CO_DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+                    placeholder="Seleccionar"
+                  />
+                  <InputField
+                    icon={<MapPin className="size-4" />}
+                    label="Ciudad"
+                    value={shipping.city}
+                    onChange={(v) => handleShipping("city", v)}
+                    placeholder="Tu ciudad"
+                  />
+                  <InputField
+                    icon={<MapPin className="size-4" />}
+                    label="Dirección"
+                    value={shipping.address}
+                    onChange={(v) => handleShipping("address", v)}
+                    placeholder="Calle, carrera, número"
+                  />
+                  <InputField
+                    icon={<MapPin className="size-4" />}
+                    label="Código postal"
+                    value={shipping.zip ?? ""}
+                    onChange={(v) => handleShipping("zip", v)}
+                    placeholder="110111"
+                    className="sm:col-span-1"
+                  />
+                </div>
+                <div className="mt-5">
+                  <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
+                    <StickyNote className="size-3.5 text-custom-dark-green/70" />
+                    Notas para el vendedor (opcional)
+                  </label>
+                  <div className="group relative overflow-hidden rounded-xl">
+                    <div className="absolute inset-0 rounded-xl border border-white/50 bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:border-custom-dark-green/30 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)]" />
+                    <textarea
+                      rows={3}
+                      placeholder="Instrucciones especiales para la entrega..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="relative w-full resize-none bg-transparent px-4 py-3 text-sm text-custom-black placeholder:text-custom-black/50 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <Input
-            label="Ciudad"
-            value={shipping.city}
-            onValueChange={(v) => setShipping({ ...shipping, city: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { icon: Truck, label: "Envío seguro", sub: "Rastreo incluido" },
+                { icon: ShieldCheck, label: "Pago seguro", sub: "Datos encriptados" },
+                { icon: Lock, label: "Privacidad", sub: "Datos protegidos" },
+              ].map((badge) => (
+                <div key={badge.label} className="relative overflow-hidden rounded-xl">
+                  <div className="absolute inset-0 rounded-xl border border-white/40 bg-white/35 backdrop-blur-xl" />
+                  <div className="relative flex flex-col items-center gap-1.5 px-3 py-4 text-center">
+                    <badge.icon className="size-5 text-custom-dark-green/70" />
+                    <span className="text-xs font-semibold text-custom-dark-green">{badge.label}</span>
+                    <span className="hidden text-[10px] text-custom-black/60 sm:block">{badge.sub}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <Input
-            label="Dirección"
-            value={shipping.address}
-            onValueChange={(v) => setShipping({ ...shipping, address: v })}
-            isRequired
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
+          {/* Summary sidebar */}
+          <div className="lg:sticky lg:top-24 lg:col-span-2">
+            <div className="relative overflow-hidden rounded-2xl">
+              <div className="absolute inset-0 rounded-2xl border border-white/55 bg-white/50 shadow-sm backdrop-blur-2xl" />
+              <div className="relative p-6 lg:p-7">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-custom-dark-green/10">
+                    <Package className="size-4 text-custom-dark-green" />
+                  </div>
+                  <h2 className="text-lg font-bold text-custom-dark-green">Resumen</h2>
+                  <span className="ml-auto rounded-full bg-custom-dark-green/10 px-2.5 py-0.5 text-xs font-bold text-custom-dark-green">
+                    {totalItems} productos
+                  </span>
+                </div>
 
-          <Input
-            label="Código postal"
-            value={shipping.zip}
-            onValueChange={(v) => setShipping({ ...shipping, zip: v })}
-            classNames={{
-              base: "group",
-              label: [
-                "absolute",
-                "text-gray-700",
-                "text-sm",
-                "top-2",
-                "left-3",
-                "z-10",
-                "origin-top-left",
-                "transition-all",
-                "duration-200",
-                "group-data-[filled=true]:-translate-y-2",
-                "group-data-[filled=true]:scale-75",
-                "group-data-[filled=true]:text-gray-800",
-                "group-data-[focus=true]:text-custom-dark-green"
-              ],
-              inputWrapper: [
-                "relative",
-                "rounded-lg",
-                "bg-custom-cream",
-                "border",
-                "border-custom-medium-green",
-                "shadow-sm",
-                "hover:bg-custom-cream/90",
-                "focus-within:ring-2",
-                "focus-within:ring-custom-medium-green",
-                "focus-within:border-custom-medium-green",
-                "h-12",
-                "px-3",
-                "pt-4",
-                "pb-1"
-              ],
-              input: "text-gray-800 pt-1 font-medium"
-            }}
-          />
+                <div className="mb-5 flex flex-col gap-3">
+                  {items.map((it) => (
+                    <div key={it.id} className="group relative overflow-hidden rounded-xl">
+                      <div className="absolute inset-0 rounded-xl border border-white/45 bg-white/40 backdrop-blur-xl" />
+                      <div className="relative flex items-center gap-3 p-3">
+                        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg shadow-sm">
+                          {it.image ? (
+                            <img
+                              src={asset(it.image)}
+                              alt={it.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-custom-cream/80 text-xs text-custom-dark-green/50">
+                              —
+                            </div>
+                          )}
+                          <div className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-custom-dark-green text-[10px] font-bold text-white shadow-sm">
+                            {it.quantity}
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate text-sm font-semibold text-custom-dark-green">
+                            {it.name}
+                          </h4>
+                          <p className="mt-0.5 text-xs text-custom-black/60">
+                            ×{it.quantity} unidades
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="text-sm font-bold text-custom-dark-green">
+                            {formatCOP(it.price * it.quantity)}
+                          </span>
+                          {it.originalPrice != null && it.originalPrice > it.price && (
+                            <p className="text-[10px] text-custom-black/50 line-through">
+                              {formatCOP(it.originalPrice * it.quantity)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mb-4 h-px bg-custom-medium-green/20" />
+
+                <div className="mb-5 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-custom-black/70">Subtotal</span>
+                    <span className="font-medium text-custom-dark-green">{formatCOP(subtotal)}</span>
+                  </div>
+                  {savings > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1 text-custom-medium-green">
+                        <Tag className="size-3" />
+                        Ahorro
+                      </span>
+                      <span className="font-medium text-custom-medium-green">
+                        -{formatCOP(savings)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1 text-custom-black/70">
+                      <Truck className="size-3" />
+                      Envío
+                    </span>
+                    <span className="font-medium text-custom-dark-green">
+                      {shippingCost === 0 ? "Gratis" : formatCOP(shippingCost)}
+                    </span>
+                  </div>
+                  {shippingCost === 0 && (
+                    <div className="relative overflow-hidden rounded-lg">
+                      <div className="absolute inset-0 rounded-lg border border-custom-dark-green/10 bg-custom-dark-green/5 backdrop-blur-sm" />
+                      <p className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-custom-dark-green">
+                        <Leaf className="size-3" />
+                        Envío gratis aplicado a tu orden
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-6 h-px bg-custom-medium-green/20" />
+
+                <div className="mb-6 flex items-center justify-between">
+                  <span className="text-base font-bold text-custom-dark-green">Total</span>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-custom-dark-green">
+                      {formatCOP(total)}
+                    </span>
+                    <p className="mt-0.5 text-[10px] text-custom-black/60">Impuestos incluidos</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={goToPayU}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-custom-dark-green py-3.5 text-base font-bold text-white shadow-lg shadow-custom-dark-green/20 transition-all duration-300 hover:bg-custom-medium-green hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <CreditCard className="size-4" />
+                  Pagar con PayU
+                  <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+
+                {items.length === 0 && (
+                  <p className="mt-3 text-center text-sm text-custom-black/60">
+                    Tu carrito está vacío.
+                  </p>
+                )}
+
+                <p className="mt-3 text-center text-[10px] leading-relaxed text-custom-black/50">
+                  Al iniciar el pago, aceptas nuestros{" "}
+                  <a href="#" className="underline transition-colors hover:text-custom-dark-green">
+                    Términos y Condiciones
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <Textarea
-          label="Notas para el vendedor (opcional)"
-          value={notes}
-          onValueChange={setNotes}
-          classNames={{
-            base: "group",
-            label: [
-              "text-gray-700",
-              "text-sm",
-              "mb-1",
-              "block",
-              "transition-all",
-              "duration-200",
-              "group-data-[focus=true]:text-custom-dark-green"
-            ],
-            inputWrapper: [
-              "relative",
-              "rounded-lg",
-              "bg-custom-cream",
-              "border",
-              "border-custom-medium-green",
-              "shadow-sm",
-              "hover:bg-custom-cream/90",
-              "focus-within:ring-2",
-              "focus-within:ring-custom-medium-green",
-              "focus-within:border-custom-medium-green",
-              "px-3",
-              "py-2"
-            ],
-            input: "text-gray-800 font-medium min-h-[100px]"
-          }}
+function InputField({
+  icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  className = "",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  type?: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
+        <span className="text-custom-dark-green/70">{icon}</span>
+        {label}
+      </label>
+      <div className="group relative overflow-hidden rounded-xl">
+        <div className="absolute inset-0 rounded-xl border border-white/50 bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:border-custom-dark-green/30 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)]" />
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="relative h-11 w-full bg-transparent px-4 text-sm text-custom-black placeholder:text-custom-black/50 focus:outline-none"
         />
       </div>
-      <aside className="space-y-5 rounded-2xl border border-custom-medium-green/30 bg-custom-cream/50 p-6 shadow-sm">
-        <h3 className="text-xl font-bold text-custom-dark-green">Resumen</h3>
-        <ul className="divide-y divide-custom-medium-green/20">
-          {items.map((it) => (
-            <li key={it.id} className="flex items-center justify-between py-2">
-              <div className="max-w-[70%] truncate">{it.name} × {it.quantity}</div>
-              <div className="font-semibold">
-                {new Intl.NumberFormat("es-CO", {
-                  style: "currency",
-                  currency: "COP",
-                  maximumFractionDigits: 0
-                }).format(it.price * it.quantity)}
-              </div>
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center justify-between border-t border-custom-medium-green/20 pt-3">
-          <span className="text-sm text-gray-600">Total</span>
-          <span className="text-2xl font-bold text-custom-dark-green">
-            {new Intl.NumberFormat("es-CO", {
-              style: "currency",
-              currency: "COP",
-              maximumFractionDigits: 0
-            }).format(total)}
-          </span>
-        </div>
-        <Button
-          className="w-full rounded-xl bg-custom-dark-green text-custom-cream font-semibold shadow-sm hover:bg-custom-medium-green"
-          isDisabled={disabled}
-          onPress={goToPayU}
+    </div>
+  );
+}
+
+function SelectField({
+  icon,
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
+        <span className="text-custom-dark-green/70">{icon}</span>
+        {label}
+      </label>
+      <div className="group relative overflow-hidden rounded-xl">
+        <div className="absolute inset-0 rounded-xl border border-white/50 bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:border-custom-dark-green/30 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)]" />
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="relative h-11 w-full cursor-pointer appearance-none bg-transparent pr-10 pl-4 text-sm text-custom-black focus:outline-none"
         >
-          Pagar con PayU
-        </Button>
-        {items.length === 0 && (
-          <p className="text-sm text-gray-500 text-center">
-            Tu carrito está vacío.
-          </p>
-        )}
-      </aside>
+          {placeholder && (
+            <option value="">{placeholder}</option>
+          )}
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-custom-black/50" />
+      </div>
     </div>
   );
 }

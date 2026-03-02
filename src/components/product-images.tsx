@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-type Imagen = { url_imagen: string };
+type Imagen = { url_imagen: string | null };
 
-function normalizeImage(url?: string) {
+function normalizeImage(url?: string | null) {
   if (!url) return "/placeholder.png";
   if (url.startsWith("http")) return url;
   const base = import.meta.env.PUBLIC_API_BASE ?? "";
@@ -14,8 +14,8 @@ export default function ProductImages({ images, productName }: { images: Imagen[
   const src = normalizeImage(images[current]?.url_imagen);
 
   return (
-    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto">
-      <div className="aspect-square w-full overflow-hidden rounded-2xl border border-custom-medium-green/80 shadow-sm">
+    <div className="mx-auto w-full max-w-xs sm:max-w-sm md:max-w-md">
+      <div className="aspect-square w-full overflow-hidden rounded-2xl border border-custom-medium-green/80">
         <img src={src} alt={productName} className="h-full w-full object-cover" loading="lazy" />
       </div>
 
@@ -26,8 +26,10 @@ export default function ProductImages({ images, productName }: { images: Imagen[
               <button
                 type="button"
                 onClick={() => setCurrent(i)}
-                className={`group aspect-square w-full overflow-hidden rounded-xl border border-gray-200 transition hover:ring-2 hover:ring-custom-medium-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green ${
-                  i === current ? "ring-2 ring-custom-medium-green" : ""
+                className={`group aspect-square w-full overflow-hidden rounded-xl border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green ${
+                  i === current
+                    ? "ring-2 ring-custom-medium-green border-custom-medium-green"
+                    : "border-gray-200 hover:ring-2 hover:ring-custom-medium-green"
                 }`}
               >
                 <img
