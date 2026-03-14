@@ -7,6 +7,10 @@ export type CartItem = {
   price: number;
   image?: string;
   quantity: number;
+  /** Nombre de la categoría del producto (opcional). */
+  category?: string;
+  /** Precio original antes de descuento (para mostrar ahorro). */
+  originalPrice?: number;
 };
 
 type CartState = {
@@ -36,7 +40,13 @@ export const useCartStore = create<CartState>()(
           const i = items.findIndex((it) => it.id === item.id);
           if (i === -1) return { items: [...items, item] };
           const next = [...items];
-          next[i] = { ...next[i], quantity: next[i].quantity + item.quantity };
+          const existing = next[i];
+          next[i] = {
+            ...existing,
+            quantity: existing.quantity + item.quantity,
+            ...(item.category && !existing.category ? { category: item.category } : {}),
+            ...(item.originalPrice != null && existing.originalPrice == null ? { originalPrice: item.originalPrice } : {}),
+          };
           return { items: next };
         }),
       remove: (id) => set(({ items }) => ({ items: items.filter((it) => it.id !== id) })),
@@ -62,6 +72,16 @@ export const useCartStore = create<CartState>()(
 
 export const useCartCount = () => useCartStore((s) => s.items.reduce((a, b) => a + b.quantity, 0));
 export const useCartTotal = () => useCartStore((s) => s.items.reduce((a, b) => a + b.price * b.quantity, 0));
+
+/** Formatea un número como peso colombiano (COP). */
+export function formatCOP(n: number | string): string {
+  const num = typeof n === "string" ? parseFloat(n) : n;
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(num);
+}
 
 export const addToCart = (item: CartItem) => useCartStore.getState().add(item);
 export const removeFromCart = (id: CartItem["id"]) => useCartStore.getState().remove(id);
