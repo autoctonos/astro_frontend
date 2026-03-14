@@ -49,8 +49,8 @@ export default function HeroSection() {
           {/* Stats */}
           <div className="mt-8 flex flex-wrap items-center gap-8 text-custom-cream/85">
             {[
-              { value: "150+", label: "Productores aliados" },
-              { value: "500+", label: "Productos artesanales" },
+              { value: "15+", label: "Productores aliados" },
+              { value: "50+", label: "Productos artesanales" },
             ].map((stat) => (
               <div key={stat.label} className="min-w-[90px]">
                 <p className="text-2xl font-semibold md:text-3xl">{stat.value}</p>

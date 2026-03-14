@@ -31,10 +31,10 @@ export default function ProductsList({ products }: { products: ProductCardData[]
         return (
           <li
             key={p.id_producto}
-            className={`group relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 p-3 shadow-sm backdrop-blur-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-custom-light-green/70${outOfStock ? " opacity-60 grayscale" : ""}`}
+            className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/60 p-3 shadow-sm backdrop-blur-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-custom-light-green/70${outOfStock ? " opacity-60 grayscale" : ""}`}
           >
-            <a href={`/producto/${p.id_producto}`} className="block">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-white/60 bg-white/40">
+            <a href={`/producto/${p.id_producto}`} className="flex min-h-0 flex-1 flex-col">
+              <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl border border-white/60 bg-white/40">
                 <img
                   src={img}
                   alt={p.nombre}
@@ -55,7 +55,7 @@ export default function ProductsList({ products }: { products: ProductCardData[]
                   </div>
                 )}
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-1 flex-col">
                 <h3 className="line-clamp-2 font-semibold text-custom-black/90">
                   {p.nombre}
                 </h3>
@@ -84,8 +84,8 @@ export default function ProductsList({ products }: { products: ProductCardData[]
               }
               className={
                 outOfStock
-                  ? "mt-3 w-full cursor-not-allowed rounded-xl border border-white/40 bg-white/40 px-3 py-2 text-sm font-medium text-gray-400 backdrop-blur"
-                  : "mt-3 w-full rounded-xl border border-custom-dark-green/70 bg-custom-dark-green/90 px-3 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition-all duration-200 hover:bg-custom-medium-green hover:border-custom-medium-green active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                  ? "mt-auto w-full cursor-not-allowed rounded-xl border border-white/40 bg-white/40 px-3 py-2 text-sm font-medium text-gray-400 backdrop-blur"
+                  : "mt-auto w-full rounded-xl border border-custom-dark-green/70 bg-custom-dark-green/90 px-3 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition-all duration-200 hover:bg-custom-medium-green hover:border-custom-medium-green active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
               }
             >
               <span className="inline-flex items-center justify-center gap-1.5">
