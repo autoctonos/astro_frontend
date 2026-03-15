@@ -55,7 +55,7 @@ export default function ProducersSection() {
                 {item.nombre}
               </h3>
               
-              {/* 5. Usamos item.descripcion en lugar de producer.description */}
+              {/* 5. Usamos item.descripcion en lugar de producer.description  */}
               <p className="text-gray-500 text-sm leading-relaxed font-light">
                 {item.descripcion}
               </p>
