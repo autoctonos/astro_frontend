@@ -4,9 +4,9 @@ import { CartIcon } from "@/components/icons/CartIcon";
 
 export default function CartSheet() {
   const isOpen = useCartStore((s) => s.isOpen);
-  const items = useCartStore((s) => s.list());
-  const count = useCartStore((s) => s.count());
-  const total = useCartStore((s) => s.total());
+  const items = useCartStore((s) => s.items);
+  const count = useCartStore((s) => s.items.reduce((a, b) => a + b.quantity, 0));
+  const total = useCartStore((s) => s.items.reduce((a, b) => a + b.price * b.quantity, 0));
   const close = useCartStore((s) => s.close);
   const inc = useCartStore((s) => s.inc);
   const dec = useCartStore((s) => s.dec);
@@ -91,7 +91,7 @@ export default function CartSheet() {
                           −
                         </button>
                         <span className="w-6 text-center tabular-nums">
-                          {it.qty}
+                          {it.quantity}
                         </span>
                         <button
                           onClick={() => inc(it.id)}
@@ -101,7 +101,7 @@ export default function CartSheet() {
                           +
                         </button>
                       </div>
-                      <div className="font-medium">{formatCOP(it.price * it.qty)}</div>
+                      <div className="font-medium">{formatCOP(it.price * it.quantity)}</div>
                     </div>
                   </div>
                 </li>
