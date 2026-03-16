@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { fetchProductoresConImagenes, fetchDepartamentos, fetchMunicipios } from "@/api/producers";
 
+const PRODUCTOS_POR_PAGINA = 10;
+
 export default function ProducersSection() {
   const [departamentos, setDepartamentos] = useState([]);
   const [municipios, setMunicipios] = useState([]);
@@ -12,12 +14,14 @@ export default function ProducersSection() {
   const [productores, setProductores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Cargar Departamentos
+
+  const [paginaActual, setPaginaActual] = useState(1);
+
+
   useEffect(() => {
     fetchDepartamentos().then(data => setDepartamentos(data.results || data));
   }, []);
 
-  // 2. Cargar Municipios según el Departamento
   useEffect(() => {
     if (depSeleccionado) {
       fetchMunicipios(depSeleccionado).then(data => setMunicipios(data.results || data));
@@ -26,13 +30,14 @@ export default function ProducersSection() {
     }
   }, [depSeleccionado]);
 
-  // Manejador del select de Departamentos
   const handleDepartamentoChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setDepSeleccionado(e.target.value);
     setMuniSeleccionado("");
   };
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [depSeleccionado, muniSeleccionado]);
 
-  // 3. Consultar productores
   useEffect(() => {
     setLoading(true);
     fetchProductoresConImagenes(depSeleccionado, muniSeleccionado)
@@ -44,11 +49,15 @@ export default function ProducersSection() {
       .finally(() => setLoading(false));
   }, [depSeleccionado, muniSeleccionado]);
 
+  const indiceUltimoProductor = paginaActual * PRODUCTOS_POR_PAGINA;
+  const indicePrimerProductor = indiceUltimoProductor - PRODUCTOS_POR_PAGINA;
+  const productoresPaginados = productores.slice(indicePrimerProductor, indiceUltimoProductor);
+  const totalPaginas = Math.ceil(productores.length / PRODUCTOS_POR_PAGINA);
+
   return (
     <section className="py-24 px-4 md:px-8 w-full font-sans">
       <div className="max-w-7xl mx-auto">
 
-        {/* Títulos */}
         <div className="text-center mb-16 space-y-4">
           <span className="text-[#D48D66] text-xs font-bold tracking-[0.2em] uppercase block">
             Quienes nos respaldan
@@ -59,7 +68,6 @@ export default function ProducersSection() {
           <div className="w-12 h-1 bg-[#E8C4A8] mx-auto rounded-full my-8"></div>
         </div>
 
-        {/* Filtros */}
         <div className="flex flex-col md:flex-row justify-center gap-4 mb-16 max-w-2xl mx-auto">
           <div className="relative w-full md:w-1/2">
             <select
@@ -99,52 +107,78 @@ export default function ProducersSection() {
           </div>
         </div>
 
-        {/* 👇 ESTA ES LA PARTE QUE FALTABA: EL RENDERIZADO DE LOS PRODUCTORES 👇 */}
         {loading ? (
           <div className="text-center py-20 text-gray-500">Cargando productores...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {productores.length > 0 ? (
-              productores.map((item: any) => (
-                <article
-                  key={item.id_productor}
-                  className="group bg-white rounded-2xl p-8 text-center border border-gray-100 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 ease-in-out cursor-default"
-                >
-                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-[#FFFCF8] transition-colors relative overflow-hidden">
-                    {item.imagen ? (
-                      <img
-                        src={item.imagen}
-                        alt={item.nombre}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-gray-400 font-serif font-bold text-xl uppercase">
-                        {item.nombre.charAt(0)}
-                      </span>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {productoresPaginados.length > 0 ? (
+                productoresPaginados.map((item: any) => (
+                  <article
+                    key={item.id_productor}
+                    className="group bg-white/60 backdrop-blur-md rounded-2xl p-8 text-center border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 transition-all duration-300 ease-in-out cursor-default"
+                  >
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-[#FFFCF8] transition-colors relative overflow-hidden">
+                      {item.imagen ? (
+                        <img
+                          src={item.imagen}
+                          alt={item.nombre}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-gray-400 font-serif font-bold text-xl uppercase">
+                          {item.nombre.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-xl font-serif font-bold text-gray-900 mb-3">
+                      {item.nombre}
+                    </h3>
+
+                    {item.ubicacion && (
+                      <p className="text-[#D48D66] text-xs font-semibold uppercase tracking-wider mb-3">
+                        📍 {item.ubicacion}
+                      </p>
                     )}
-                  </div>
 
-                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-3">
-                    {item.nombre}
-                  </h3>
-
-                  {item.ubicacion && (
-                    <p className="text-[#D48D66] text-xs font-semibold uppercase tracking-wider mb-3">
-                      📍 {item.ubicacion}
+                    <p className="text-gray-500 text-sm leading-relaxed font-light">
+                      {item.descripcion}
                     </p>
-                  )}
+                  </article>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12 text-gray-500 font-light">
+                  No hay productores registrados en esta ubicación.
+                </div>
+              )}
+            </div>
 
-                  <p className="text-gray-500 text-sm leading-relaxed font-light">
-                    {item.descripcion}
-                  </p>
-                </article>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12 text-gray-500 font-light">
-                No hay productores registrados en esta ubicación.
+            {/* 👇 Controles de Paginación */}
+            {totalPaginas > 1 && (
+              <div className="flex justify-center items-center mt-16 space-x-4">
+                <button
+                  onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
+                  disabled={paginaActual === 1}
+                  className="px-6 py-2 border border-gray-200 rounded-full text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-gray-300 transition-all font-light text-sm"
+                >
+                  Anterior
+                </button>
+
+                <span className="text-gray-500 font-light text-sm px-4">
+                  Página <span className="font-semibold text-gray-700">{paginaActual}</span> de {totalPaginas}
+                </span>
+
+                <button
+                  onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  className="px-6 py-2 border border-[#E8C4A8] bg-[#FFFCF8] rounded-full text-[#D48D66] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#E8C4A8] hover:text-white transition-all font-medium text-sm shadow-sm"
+                >
+                  Siguiente
+                </button>
               </div>
             )}
-          </div>
+          </>
         )}
 
       </div>
