@@ -22,3 +22,13 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# claude files
+CLAUDE.md
+
+#skills files
+.agents/
+skills-lock.json
+.claude/
+.windsurf/
+.vercel

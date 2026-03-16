@@ -80,7 +80,7 @@ export default function Navbar() {
           ))}
         </ul>
         <NavbarItem>
-          <ul className="hidden lg:flex">
+          <ul className="hidden lg:flex items-center justify-center bg-custom-dark-green rounded-lg ">
             <Drop title="Categorías" />
           </ul>
         </NavbarItem>
