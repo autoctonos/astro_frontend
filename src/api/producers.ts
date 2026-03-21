@@ -1,26 +1,21 @@
 import { http } from "@/lib/http";
-import { ProducersArraySchema } from "@/api/schemas/producers";
 export type { Producer } from "@/api/schemas/producers";
 
-
 export const fetchDepartamentos = async () => {
-  const response = await fetch(`/api/productores/departamentos/`);
-  return response.json();
+  return http<unknown>("/api/productores/departamentos/");
 };
 
 export const fetchMunicipios = async (departamentoId: string | number) => {
   if (!departamentoId) return [];
-  const response = await fetch(`/api/productores/municipios/?departamento_id=${departamentoId}`);
-  return response.json();
+  return http<unknown>(`/api/productores/municipios/?departamento_id=${departamentoId}`);
 };
 
 export const fetchProductoresConImagenes = async (depId = "", muniId = "") => {
-  let url = `/api/productores/`;
+  let path = "/api/productores/";
   if (muniId) {
-    url += `?id_municipio=${muniId}`;
+    path += `?id_municipio=${muniId}`;
   } else if (depId) {
-    url += `?departamento_id=${depId}`;
+    path += `?departamento_id=${depId}`;
   }
-  const response = await fetch(url);
-  return response.json();
+  return http<unknown>(path);
 };
