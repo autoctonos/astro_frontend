@@ -114,7 +114,7 @@ export default function CheckoutShipping() {
     0
   );
   const shippingCost = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
-  const total = subtotal - savings + shippingCost;
+  const total = subtotal + shippingCost;
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
   async function goToPayU() {
