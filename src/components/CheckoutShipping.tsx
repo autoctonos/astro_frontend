@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import {
   User,
   MapPin,
@@ -34,6 +35,17 @@ type Shipping = {
   address: string;
   zip?: string;
 };
+
+const checkoutSchema = z.object({
+  fullName: z.string().min(1, "El nombre es requerido"),
+  email: z.string().min(1, "El email es requerido").email("Email inválido"),
+  phone: z.string().min(5, "El teléfono es requerido"),
+  docType: z.string().min(1, "Selecciona un tipo de documento"),
+  docNumber: z.string().min(1, "El número de documento es requerido"),
+  state: z.string().min(1, "Selecciona un departamento"),
+  city: z.string().min(1, "La ciudad es requerida"),
+  address: z.string().min(1, "La dirección es requerida"),
+});
 
 const DOC_TYPES = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -84,18 +96,16 @@ export default function CheckoutShipping() {
   const disabled = items.length === 0 || submitting;
 
   function validate() {
-    const e: Record<string, string> = {};
-    if (!buyer.fullName.trim()) e.fullName = "El nombre es requerido";
-    if (!buyer.email.trim()) e.email = "El email es requerido";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer.email)) e.email = "Email inválido";
-    if (!buyer.phone.trim()) e.phone = "El teléfono es requerido";
-    if (!buyer.docType) e.docType = "Selecciona un tipo de documento";
-    if (!buyer.docNumber.trim()) e.docNumber = "El número de documento es requerido";
-    if (!shipping.state) e.state = "Selecciona un departamento";
-    if (!shipping.city.trim()) e.city = "La ciudad es requerida";
-    if (!shipping.address.trim()) e.address = "La dirección es requerida";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    const result = checkoutSchema.safeParse({ ...buyer, ...shipping });
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      setErrors(Object.fromEntries(
+        Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""])
+      ));
+      return false;
+    }
+    setErrors({});
+    return true;
   }
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
