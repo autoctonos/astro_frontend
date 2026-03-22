@@ -6,17 +6,104 @@ const query = Astro.url.searchParams;
 const ref = query.get("referenceCode");
 const state = query.get("transactionState") || query.get("state_pol");
 const message = query.get("message") || query.get("response_message_pol");
+
+const isApproved = state === "4" || state === "APPROVED";
+const isPending = state === "7" || state === "PENDING";
+const isDeclined = !isApproved && !isPending;
+
+const config = isApproved
+  ? {
+      icon: "✓",
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      title: "¡Pago exitoso!",
+      subtitle: "Tu pedido ha sido confirmado y está siendo procesado.",
+      badgeBg: "bg-green-50 border-green-200",
+      badgeText: "text-green-700",
+      badgeLabel: "Aprobado",
+    }
+  : isPending
+  ? {
+      icon: "⏳",
+      iconBg: "bg-yellow-100",
+      iconColor: "text-yellow-600",
+      title: "Pago en proceso",
+      subtitle: "Tu pago está siendo verificado. Te notificaremos cuando se confirme.",
+      badgeBg: "bg-yellow-50 border-yellow-200",
+      badgeText: "text-yellow-700",
+      badgeLabel: "Pendiente",
+    }
+  : {
+      icon: "✕",
+      iconBg: "bg-red-100",
+      iconColor: "text-red-500",
+      title: "Pago no completado",
+      subtitle: "No se pudo procesar el pago. Puedes intentarlo de nuevo.",
+      badgeBg: "bg-red-50 border-red-200",
+      badgeText: "text-red-700",
+      badgeLabel: "Declinado",
+    };
 ---
+
 <Layout>
-  <div class="mx-auto max-w-xl px-4 py-12 text-center">
-    <h1 class="mb-2 text-2xl font-semibold text-custom-dark-green">Resultado del pago</h1>
-    <p class="mb-6 text-gray-700">Referencia: <strong>{ref}</strong></p>
-    <p class="mb-8">Estado: <strong>{state}</strong></p>
-    <p class="mb-8">{message}</p>
-    <a class="rounded-xl bg-custom-dark-green px-6 py-3 text-white font-semibold hover:bg-custom-medium-green transition-colors" href="/">
-      Volver al inicio
-    </a>
-    
-    <PaymentConfirmation client:load />
+  <div class="min-h-[70vh] flex items-center justify-center px-4 py-16">
+    <div class="w-full max-w-md">
+
+      <div class="relative overflow-hidden rounded-2xl border border-white/55 bg-white/60 shadow-xl backdrop-blur-2xl p-8 text-center">
+
+        <div class={`mx-auto mb-6 flex size-20 items-center justify-center rounded-full text-3xl ${config.iconBg}`}>
+          <span class={config.iconColor}>{config.icon}</span>
+        </div>
+
+        <h1 class="mb-2 text-2xl font-bold text-custom-dark-green">
+          {config.title}
+        </h1>
+        <p class="mb-6 text-sm text-custom-black/60 leading-relaxed">
+          {config.subtitle}
+        </p>
+
+        <div class={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold mb-6 ${config.badgeBg} ${config.badgeText}`}>
+          {config.badgeLabel}
+        </div>
+
+        {ref && (
+          <div class="mb-6 rounded-xl border border-custom-dark-green/10 bg-custom-dark-green/5 px-4 py-3 text-left">
+            <p class="text-xs text-custom-black/50 mb-0.5">Referencia de pago</p>
+            <p class="text-sm font-mono font-semibold text-custom-dark-green break-all">{ref}</p>
+          </div>
+        )}
+
+        {message && (
+          <p class="mb-6 text-xs text-custom-black/50 italic">"{message}"</p>
+        )}
+
+        <div class="flex flex-col gap-3">
+          <a
+            href="/"
+            class="flex w-full items-center justify-center gap-2 rounded-xl bg-custom-dark-green px-6 py-3 text-sm font-bold text-white shadow-lg shadow-custom-dark-green/20 transition-all hover:bg-custom-medium-green"
+          >
+            Volver al inicio
+          </a>
+
+          {isDeclined && (
+            <a
+              href="/checkout"
+              class="flex w-full items-center justify-center gap-2 rounded-xl border border-custom-dark-green/20 bg-white/60 px-6 py-3 text-sm font-semibold text-custom-dark-green transition-all hover:bg-custom-dark-green/5"
+            >
+              Intentar de nuevo
+            </a>
+          )}
+
+          <a
+            href="/products"
+            class="text-xs text-custom-black/40 hover:text-custom-dark-green transition-colors"
+          >
+            Seguir comprando
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <PaymentConfirmation client:load />
 </Layout>
