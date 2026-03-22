@@ -79,8 +79,24 @@ export default function CheckoutShipping() {
   });
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const disabled = items.length === 0 || submitting;
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!buyer.fullName.trim()) e.fullName = "El nombre es requerido";
+    if (!buyer.email.trim()) e.email = "El email es requerido";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyer.email)) e.email = "Email inválido";
+    if (!buyer.phone.trim()) e.phone = "El teléfono es requerido";
+    if (!buyer.docType) e.docType = "Selecciona un tipo de documento";
+    if (!buyer.docNumber.trim()) e.docNumber = "El número de documento es requerido";
+    if (!shipping.state) e.state = "Selecciona un departamento";
+    if (!shipping.city.trim()) e.city = "La ciudad es requerida";
+    if (!shipping.address.trim()) e.address = "La dirección es requerida";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const savings = items.reduce(
@@ -92,6 +108,7 @@ export default function CheckoutShipping() {
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
   async function goToPayU() {
+    if (!validate()) return;
     setSubmitting(true);
     try {
       const payload = {
@@ -137,10 +154,14 @@ export default function CheckoutShipping() {
     }
   }
 
-  const handleBuyer = (field: keyof Buyer, value: string) =>
+  const handleBuyer = (field: keyof Buyer, value: string) => {
     setBuyer((prev) => ({ ...prev, [field]: value }));
-  const handleShipping = (field: keyof Shipping, value: string) =>
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+  const handleShipping = (field: keyof Shipping, value: string) => {
     setShipping((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
   return (
     <section className="py-8 lg:py-14">
@@ -176,6 +197,7 @@ export default function CheckoutShipping() {
                     value={buyer.fullName}
                     onChange={(v) => handleBuyer("fullName", v)}
                     placeholder="Tu nombre completo"
+                    error={errors.fullName}
                   />
                   <SelectField
                     icon={<FileText className="size-4" />}
@@ -184,6 +206,7 @@ export default function CheckoutShipping() {
                     onChange={(v) => handleBuyer("docType", v)}
                     options={DOC_TYPES}
                     placeholder="Seleccionar"
+                    error={errors.docType}
                   />
                   <InputField
                     icon={<FileText className="size-4" />}
@@ -191,6 +214,7 @@ export default function CheckoutShipping() {
                     value={buyer.docNumber}
                     onChange={(v) => handleBuyer("docNumber", v)}
                     placeholder="123456789"
+                    error={errors.docNumber}
                   />
                   <InputField
                     icon={<Mail className="size-4" />}
@@ -199,6 +223,7 @@ export default function CheckoutShipping() {
                     value={buyer.email}
                     onChange={(v) => handleBuyer("email", v)}
                     placeholder="tu.email@ejemplo.com"
+                    error={errors.email}
                   />
                   <InputField
                     icon={<Phone className="size-4" />}
@@ -207,6 +232,7 @@ export default function CheckoutShipping() {
                     onChange={(v) => handleBuyer("phone", v)}
                     placeholder="+57 300 000 0000"
                     className="sm:col-span-1"
+                    error={errors.phone}
                   />
                 </div>
               </div>
@@ -239,6 +265,7 @@ export default function CheckoutShipping() {
                     onChange={(v) => handleShipping("state", v)}
                     options={CO_DEPARTMENTS.map((d) => ({ value: d, label: d }))}
                     placeholder="Seleccionar"
+                    error={errors.state}
                   />
                   <InputField
                     icon={<MapPin className="size-4" />}
@@ -246,6 +273,7 @@ export default function CheckoutShipping() {
                     value={shipping.city}
                     onChange={(v) => handleShipping("city", v)}
                     placeholder="Tu ciudad"
+                    error={errors.city}
                   />
                   <InputField
                     icon={<MapPin className="size-4" />}
@@ -253,6 +281,7 @@ export default function CheckoutShipping() {
                     value={shipping.address}
                     onChange={(v) => handleShipping("address", v)}
                     placeholder="Calle, carrera, número"
+                    error={errors.address}
                   />
                   <InputField
                     icon={<MapPin className="size-4" />}
@@ -450,6 +479,7 @@ function InputField({
   placeholder,
   type = "text",
   className = "",
+  error,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -458,6 +488,7 @@ function InputField({
   placeholder: string;
   type?: string;
   className?: string;
+  error?: string;
 }) {
   return (
     <div className={className}>
@@ -466,7 +497,7 @@ function InputField({
         {label}
       </label>
       <div className="group relative overflow-hidden rounded-xl">
-        <div className="absolute inset-0 rounded-xl border border-white/50 bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:border-custom-dark-green/30 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)]" />
+        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"}`} />
         <input
           type={type}
           value={value}
@@ -475,6 +506,7 @@ function InputField({
           className="relative h-11 w-full bg-transparent px-4 text-sm text-custom-black placeholder:text-custom-black/50 focus:outline-none"
         />
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -486,6 +518,7 @@ function SelectField({
   onChange,
   options,
   placeholder,
+  error,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -493,6 +526,7 @@ function SelectField({
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
+  error?: string;
 }) {
   return (
     <div>
@@ -501,7 +535,7 @@ function SelectField({
         {label}
       </label>
       <div className="group relative overflow-hidden rounded-xl">
-        <div className="absolute inset-0 rounded-xl border border-white/50 bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:border-custom-dark-green/30 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)]" />
+        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"}`} />
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -518,6 +552,7 @@ function SelectField({
         </select>
         <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-custom-black/50" />
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
