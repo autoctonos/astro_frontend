@@ -11,11 +11,12 @@ function toMoneyString(n: number) {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const {
-      buyer,       // { fullName, email, phone, docType, docNumber }
-      shipping,    // { country, state, city, address, zip? }
-      items,       // CartItem[]
-      referenceCode, // opcional: string
-      description,   // opcional: string
+      buyer,
+      shipping,
+      items,
+      shippingCost = 0,
+      referenceCode,
+      description,
       currency = "COP",
       tax = 0,
       taxReturnBase = 0,
@@ -25,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: "Carrito vacío." }), { status: 400 });
     }
 
-    const amountNum = items.reduce((acc: number, it: CartItem) => acc + it.price * it.quantity, 0);
+    const amountNum = items.reduce((acc: number, it: CartItem) => acc + it.price * it.quantity, 0) + Number(shippingCost);
     const amount = toMoneyString(amountNum);
 
     const MERCHANT_ID = import.meta.env.PAYU_MERCHANT_ID as string;

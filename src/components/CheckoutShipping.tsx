@@ -124,6 +124,7 @@ export default function CheckoutShipping() {
       const payload = {
         buyer,
         shipping,
+        shippingCost,
         items: items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity })),
         description: `Compra Autóctonos (${items.length} ítems)`,
         currency: "COP",
