@@ -41,7 +41,7 @@ export default function CategoriesSection({ categories }: Props) {
               <a
                 key={category.slug ?? category.nombre}
                 href={href}
-                className="group flex flex-col items-center gap-3 rounded-2xl border border-custom-medium-green/25 bg-white/70 p-4 text-center shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-custom-medium-green/60 hover:shadow-md"
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-white/50 bg-white/50 p-4 text-center shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-custom-medium-green/50 hover:bg-white/60 hover:shadow-md"
               >
                 <div className="flex size-12 items-center justify-center rounded-xl bg-custom-light-green/20 text-custom-dark-green transition-all duration-300 group-hover:bg-custom-light-green/30 group-hover:scale-110">
                   <Icon className="size-5" />
