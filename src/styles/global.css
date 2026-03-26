@@ -22,9 +22,9 @@
   select:-webkit-autofill,
   select:-webkit-autofill:hover,
   select:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0px 1000px theme('colors.custom.cream') inset !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--color-custom-cream) inset !important;
     -webkit-text-fill-color: theme('colors.gray.800') !important;
-    background-color: theme('colors.custom.cream') !important;
+    background-color: var(--color-custom-cream) !important;
   }
   * {
     box-sizing: border-box;
