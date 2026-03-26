@@ -108,13 +108,21 @@ export default function CheckoutShipping() {
     return true;
   }
 
-  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const discountedSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const listSubtotal = items.reduce(
+    (s, i) =>
+      s +
+      (i.originalPrice && i.originalPrice > i.price
+        ? i.originalPrice * i.quantity
+        : i.price * i.quantity),
+    0
+  );
   const savings = items.reduce(
     (s, i) => s + (i.originalPrice && i.originalPrice > i.price ? (i.originalPrice - i.price) * i.quantity : 0),
     0
   );
-  const shippingCost = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
-  const total = subtotal + shippingCost;
+  const shippingCost = discountedSubtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
+  const total = discountedSubtotal + shippingCost;
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
   async function goToPayU() {
@@ -405,7 +413,7 @@ export default function CheckoutShipping() {
                 <div className="mb-5 flex flex-col gap-2.5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-custom-black/70">Subtotal</span>
-                    <span className="font-medium text-custom-dark-green">{formatCOP(subtotal)}</span>
+                    <span className="font-medium text-custom-dark-green">{formatCOP(listSubtotal)}</span>
                   </div>
                   {savings > 0 && (
                     <div className="flex items-center justify-between text-sm">

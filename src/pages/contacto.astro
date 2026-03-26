@@ -1,0 +1,107 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Navbar from "@/components/navigation/navbar";
+import ContactForm from "@/components/ContactForm";
+import { Mail, Phone, MapPin, Clock } from "lucide-react";
+---
+
+<Layout title="Contacto - Autóctonos">
+  <Navbar client:idle />
+
+  <section class="py-12 md:py-16">
+    <div class="mx-auto max-w-5xl">
+
+      <!-- Encabezado -->
+      <div class="mb-10 text-center">
+        <span class="inline-block rounded-full bg-custom-light-green/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-custom-dark-green">
+          Contáctanos
+        </span>
+        <h1 class="mt-3 text-3xl font-bold text-custom-dark-green md:text-4xl text-balance">
+          ¿Tienes alguna pregunta?
+        </h1>
+        <p class="mt-3 text-sm leading-relaxed text-gray-500 md:text-base">
+          Estamos aquí para ayudarte. Escríbenos y te responderemos a la brevedad.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-5">
+
+        <!-- Info lateral -->
+        <aside class="flex flex-col gap-5 lg:col-span-2">
+
+          <!-- Tarjeta info -->
+          <div class="rounded-2xl border border-custom-medium-green/20 bg-white/60 p-6 backdrop-blur-sm">
+            <h2 class="mb-5 text-base font-semibold text-custom-dark-green">
+              Información de contacto
+            </h2>
+            <ul class="flex flex-col gap-4">
+              <li class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-custom-light-green/20">
+                  <Mail class="h-4 w-4 text-custom-dark-green" />
+                </span>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Email</p>
+                  <a href="mailto:contacto@autoctonos.com" class="text-sm font-medium text-custom-dark-green hover:text-custom-medium-green transition-colors">
+                    contacto@autoctonos.com
+                  </a>
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-custom-light-green/20">
+                  <Phone class="h-4 w-4 text-custom-dark-green" />
+                </span>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Teléfono</p>
+                  <a href="tel:+573000000000" class="text-sm font-medium text-custom-dark-green hover:text-custom-medium-green transition-colors">
+                    +57 300 000 0000
+                  </a>
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-custom-light-green/20">
+                  <MapPin class="h-4 w-4 text-custom-dark-green" />
+                </span>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Ubicación</p>
+                  <p class="text-sm font-medium text-custom-dark-green">Colombia</p>
+                </div>
+              </li>
+              <li class="flex items-start gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-custom-light-green/20">
+                  <Clock class="h-4 w-4 text-custom-dark-green" />
+                </span>
+                <div>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Horario</p>
+                  <p class="text-sm font-medium text-custom-dark-green">Lun – Vie, 8 am – 6 pm</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Tarjeta extra -->
+          <div class="rounded-2xl border border-custom-medium-green/20 bg-custom-dark-green/95 p-6 text-custom-cream">
+            <h3 class="text-base font-semibold">¿Eres productor?</h3>
+            <p class="mt-2 text-sm leading-relaxed text-custom-cream/80">
+              Si tienes productos artesanales y quieres unirte a nuestra plataforma, cuéntanos sobre ti.
+            </p>
+            <a
+              href="/producers"
+              class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-custom-light-green hover:text-custom-cream transition-colors"
+            >
+              Ver productores →
+            </a>
+          </div>
+        </aside>
+
+        <!-- Formulario -->
+        <div class="rounded-2xl border border-custom-medium-green/20 bg-white/60 p-6 backdrop-blur-sm md:p-8 lg:col-span-3">
+          <h2 class="mb-6 text-base font-semibold text-custom-dark-green">
+            Envíanos un mensaje
+          </h2>
+          <ContactForm client:load />
+        </div>
+
+      </div>
+    </div>
+  </section>
+</Layout>

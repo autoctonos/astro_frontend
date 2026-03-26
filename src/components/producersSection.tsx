@@ -5,13 +5,13 @@ import { fetchProductoresConImagenes, fetchDepartamentos, fetchMunicipios } from
 const PRODUCTOS_POR_PAGINA = 10;
 
 export default function ProducersSection() {
-  const [departamentos, setDepartamentos] = useState([]);
-  const [municipios, setMunicipios] = useState([]);
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [municipios, setMunicipios] = useState<any[]>([]);
 
   const [depSeleccionado, setDepSeleccionado] = useState("");
   const [muniSeleccionado, setMuniSeleccionado] = useState("");
 
-  const [productores, setProductores] = useState([]);
+  const [productores, setProductores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
 
@@ -19,12 +19,12 @@ export default function ProducersSection() {
 
 
   useEffect(() => {
-    fetchDepartamentos().then(data => setDepartamentos(data.results || data));
+    fetchDepartamentos().then((data: any) => setDepartamentos(data?.results || data));
   }, []);
 
   useEffect(() => {
     if (depSeleccionado) {
-      fetchMunicipios(depSeleccionado).then(data => setMunicipios(data.results || data));
+      fetchMunicipios(depSeleccionado).then((data: any) => setMunicipios(data?.results || data));
     } else {
       setMunicipios([]);
     }
@@ -41,8 +41,8 @@ export default function ProducersSection() {
   useEffect(() => {
     setLoading(true);
     fetchProductoresConImagenes(depSeleccionado, muniSeleccionado)
-      .then((data) => {
-        const datosReales = data.results || data;
+      .then((data: any) => {
+        const datosReales = data?.results || data;
         setProductores(datosReales);
       })
       .catch((err) => console.error("Error al cargar:", err))
