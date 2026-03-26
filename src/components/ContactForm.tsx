@@ -14,7 +14,6 @@ import {
   Clock,
 } from "lucide-react";
 
-// ─── Schema de validación ─────────────────────────────────────────────────────
 const contactSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
   email: z.string().min(1, "El email es requerido.").email("Ingresa un email válido."),
@@ -26,7 +25,6 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 type FieldErrors = Partial<Record<keyof ContactFormData, string>>;
 
-// ─── Componente InputField ─────────────────────────────────────────────────────
 function InputField({
   icon: Icon,
   label,
@@ -79,7 +77,6 @@ function InputField({
   );
 }
 
-// ─── Componente principal ──────────────────────────────────────────────────────
 export default function ContactForm() {
   const [form, setForm] = useState<ContactFormData>({
     nombre: "",
@@ -105,7 +102,7 @@ export default function ContactForm() {
     const result = contactSchema.safeParse(form);
     if (!result.success) {
       const fieldErrors: FieldErrors = {};
-      result.error.errors.forEach((err) => {
+      result.error.issues.forEach((err) => {
         const field = err.path[0] as keyof ContactFormData;
         if (!fieldErrors[field]) fieldErrors[field] = err.message;
       });
@@ -154,7 +151,6 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-      {/* Nombre + Email */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <InputField
           icon={User}
@@ -179,7 +175,6 @@ export default function ContactForm() {
         />
       </div>
 
-      {/* Teléfono + Asunto */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <InputField
           icon={Phone}
@@ -203,7 +198,6 @@ export default function ContactForm() {
         />
       </div>
 
-      {/* Mensaje */}
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-1.5 text-sm font-medium text-custom-dark-green">
           <MessageSquare className="h-4 w-4 text-custom-medium-green" />
@@ -236,7 +230,6 @@ export default function ContactForm() {
         </div>
       </div>
 
-      {/* Error del servidor */}
       {serverError && (
         <div className="flex items-center gap-2 rounded-xl border border-custom-red/20 bg-custom-red/10 px-4 py-3 text-sm text-custom-red">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -244,7 +237,6 @@ export default function ContactForm() {
         </div>
       )}
 
-      {/* Botón enviar */}
       <button
         type="submit"
         disabled={loading}
