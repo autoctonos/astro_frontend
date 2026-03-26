@@ -9,14 +9,34 @@ function normalizeImage(url?: string | null) {
   return `${base}${url}`;
 }
 
-export default function ProductImages({ images, productName }: { images: Imagen[]; productName: string }) {
+export default function ProductImages({
+  images,
+  productName,
+  outOfStock = false,
+}: {
+  images: Imagen[];
+  productName: string;
+  outOfStock?: boolean;
+}) {
   const [current, setCurrent] = useState(0);
   const src = normalizeImage(images[current]?.url_imagen);
 
   return (
     <div className="mx-auto w-full max-w-xs sm:max-w-sm md:max-w-md">
-      <div className="aspect-square w-full overflow-hidden rounded-2xl border border-custom-medium-green/80">
-        <img src={src} alt={productName} className="h-full w-full object-cover" loading="lazy" />
+      <div className="relative group aspect-square w-full overflow-hidden rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] transition-all duration-300 ease-in-out hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 cursor-default">
+        <img
+          src={src}
+          alt={productName}
+          className={`h-full w-full object-cover ${outOfStock ? "grayscale opacity-60" : ""}`}
+          loading="lazy"
+        />
+        {outOfStock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+              Agotado
+            </span>
+          </div>
+        )}
       </div>
 
       {images.length > 1 && (
@@ -35,7 +55,7 @@ export default function ProductImages({ images, productName }: { images: Imagen[
                 <img
                   src={normalizeImage(img.url_imagen)}
                   alt={`${productName} ${i + 1}`}
-                  className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                className={`h-full w-full object-cover transition group-hover:scale-[1.02] ${outOfStock ? "grayscale opacity-60" : ""}`}
                   loading="lazy"
                 />
               </button>

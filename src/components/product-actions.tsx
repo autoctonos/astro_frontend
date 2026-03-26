@@ -73,8 +73,7 @@ export default function ProductActions({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-0 rounded-2xl border border-white/70 bg-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.04)] backdrop-blur-2xl" />
+    <div className="group relative overflow-hidden rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] transition-all duration-300 ease-in-out hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 cursor-default">
       <div className="relative flex flex-col gap-4 p-5">
         {/* Precio */}
         <div className="flex items-start justify-between">
@@ -123,12 +122,12 @@ export default function ProductActions({
           </span>
           <div className="flex items-center gap-3">
             <div className="relative inline-flex items-center overflow-hidden rounded-xl">
-              <div className="absolute inset-0 rounded-xl border border-white/60 bg-white/50 backdrop-blur-xl" />
+              <div className="absolute inset-0 rounded-xl border border-gray-100 bg-gray-50" />
               <button
                 type="button"
                 onClick={() => setQty((n) => Math.max(1, n - 1))}
                 disabled={outOfStock || qty <= 1}
-                className="relative flex size-11 items-center justify-center text-custom-dark-green/60 transition-all duration-200 hover:bg-white/50 hover:text-custom-dark-green disabled:opacity-30"
+                className="relative flex size-11 items-center justify-center text-custom-dark-green/60 transition-all duration-200 hover:bg-white/70 hover:text-custom-dark-green disabled:opacity-30"
                 aria-label="Reducir cantidad"
               >
                 <Minus className="size-4" />
@@ -140,7 +139,7 @@ export default function ProductActions({
                 type="button"
                 onClick={() => setQty((n) => Math.min(max, n + 1))}
                 disabled={outOfStock || qty >= max}
-                className="relative flex size-11 items-center justify-center text-custom-dark-green/60 transition-all duration-200 hover:bg-white/50 hover:text-custom-dark-green disabled:opacity-30"
+                className="relative flex size-11 items-center justify-center text-custom-dark-green/60 transition-all duration-200 hover:bg-white/70 hover:text-custom-dark-green disabled:opacity-30"
                 aria-label="Aumentar cantidad"
               >
                 <Plus className="size-4" />
@@ -165,7 +164,7 @@ export default function ProductActions({
             onClick={handleAddToCart}
             className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold shadow-lg transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${addedToCart
                 ? "bg-custom-medium-green text-white shadow-custom-medium-green/30"
-                : "bg-custom-dark-green text-white hover:bg-custom-medium-green shadow-custom-dark-green/20 hover:shadow-xl hover:shadow-custom-dark-green/30"
+                : "bg-gradient-to-r from-custom-cream/90 to-custom-light-green/15 text-custom-dark-green border border-custom-dark-green/20 shadow-sm hover:from-custom-cream hover:to-custom-light-green/25 hover:border-custom-medium-green/40 hover:shadow-md hover:shadow-custom-medium-green/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/50"
               }`}
           >
             {outOfStock ? (
@@ -186,9 +185,10 @@ export default function ProductActions({
             <button
               type="button"
               onClick={handleBuyNow}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-custom-dark-green/20 py-3 text-sm font-semibold text-custom-dark-green transition-all duration-300 hover:bg-custom-dark-green/5"
+              className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-custom-medium-green/30 bg-gradient-to-r from-custom-light-green to-custom-medium-green py-3.5 text-base font-bold text-white shadow-lg shadow-custom-medium-green/20 transition-all duration-300 hover:from-custom-medium-green hover:to-custom-dark-green hover:shadow-xl hover:border-custom-medium-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/60 overflow-hidden"
             >
-              Comprar ahora
+              <span className="relative">Comprar ahora</span>
+              <span className="pointer-events-none absolute -inset-px translate-x-[-120%] bg-white/20 opacity-0 transition duration-700 group-hover:translate-x-[120%] group-hover:opacity-100" />
             </button>
           )}
         </div>

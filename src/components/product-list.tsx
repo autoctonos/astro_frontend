@@ -85,13 +85,16 @@ export default function ProductsList({ products }: { products: ProductCardData[]
               className={
                 outOfStock
                   ? "mt-auto w-full cursor-not-allowed rounded-xl border border-white/40 bg-white/40 px-3 py-2 text-sm font-medium text-gray-400 backdrop-blur"
-                  : "mt-auto w-full rounded-xl border border-custom-dark-green/70 bg-custom-dark-green/90 px-3 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition-all duration-200 hover:bg-custom-medium-green hover:border-custom-medium-green active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                : "mt-auto group relative flex w-full items-center justify-center gap-2 rounded-xl border border-custom-medium-green/30 bg-gradient-to-r from-custom-light-green to-custom-medium-green py-3.5 text-base font-bold text-white shadow-lg shadow-custom-medium-green/20 transition-all duration-300 hover:from-custom-medium-green hover:to-custom-dark-green hover:shadow-xl hover:border-custom-medium-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/60 overflow-hidden px-3"
               }
             >
-              <span className="inline-flex items-center justify-center gap-1.5">
+            <span className="relative inline-flex items-center justify-center gap-1.5">
                 <ShoppingCart className="size-3.5 shrink-0" />
                 {outOfStock ? "Agotado" : "Añadir al carrito"}
               </span>
+            {!outOfStock && (
+              <span className="pointer-events-none absolute -inset-px translate-x-[-120%] bg-white/20 opacity-0 transition duration-700 group-hover:translate-x-[120%] group-hover:opacity-100" />
+            )}
             </button>
           </li>
         );

@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import {
   useCartStore,
-  useCartTotal,
   incCart,
   decCart,
   removeFromCart,
@@ -26,7 +25,6 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
   const isOpen = useCartStore((s) => s.isOpen);
   const close = useCartStore((s) => s.close);
   const items = useCartStore((s) => s.items);
-  const total = useCartTotal();
 
   const [mounted, setMounted] = useState(false);
 
@@ -58,7 +56,17 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
   if (!isOpen) return null;
 
   const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
-  const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  
+  const discountedSubtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  
+  const listSubtotal = items.reduce(
+    (sum, it) =>
+      sum +
+      (it.originalPrice && it.originalPrice > it.price
+        ? it.originalPrice * it.quantity
+        : it.price * it.quantity),
+    0
+  );
   const savings = items.reduce(
     (sum, it) =>
       sum +
@@ -67,9 +75,10 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
         : 0),
     0
   );
-  const shipping = subtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
-  const totalWithShipping = subtotal - savings + shipping;
-  const progressPct = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100);
+  const shipping = discountedSubtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
+  
+  const totalWithShipping = discountedSubtotal + shipping;
+  const progressPct = Math.min(100, (discountedSubtotal / FREE_SHIPPING_MIN) * 100);
 
   return (
     <div
@@ -143,10 +152,14 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                   Descubre productos artesanales increíbles en nuestra tienda
                 </p>
                 <Button
-                  className="mt-2 rounded-xl bg-custom-dark-green text-white hover:bg-custom-medium-green shadow-lg"
+                  className="group relative mx-auto mt-2 h-12 w-full max-w-xs overflow-hidden rounded-xl border border-custom-medium-green/30 bg-gradient-to-r from-custom-light-green to-custom-medium-green px-4 text-base font-bold text-white shadow-lg shadow-custom-medium-green/20 transition-all duration-300 hover:from-custom-medium-green hover:to-custom-dark-green hover:shadow-xl hover:border-custom-medium-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/60 data-[hover=true]:from-custom-medium-green data-[hover=true]:to-custom-dark-green"
                   onPress={close}
                 >
-                  Seguir comprando
+                  <span className="relative z-[1]">Seguir comprando</span>
+                  <span
+                    className="pointer-events-none absolute -inset-px z-0 translate-x-[-120%] bg-white/20 opacity-0 transition duration-700 group-hover:translate-x-[120%] group-hover:opacity-100 group-data-[hover=true]:translate-x-[120%] group-data-[hover=true]:opacity-100"
+                    aria-hidden
+                  />
                 </Button>
               </div>
             ) : (
@@ -233,9 +246,9 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                   <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1 text-custom-dark-green/80">
                       <Leaf className="size-3 text-custom-medium-green" />
-                      {subtotal >= FREE_SHIPPING_MIN
+                      {discountedSubtotal >= FREE_SHIPPING_MIN
                         ? "Envío gratis incluido"
-                        : `Faltan ${formatCOP(FREE_SHIPPING_MIN - subtotal)} para envío gratis`}
+                        : `Faltan ${formatCOP(FREE_SHIPPING_MIN - discountedSubtotal)} para envío gratis`}
                     </span>
                     <span className="font-semibold text-custom-medium-green">
                       {formatCOP(FREE_SHIPPING_MIN)}
@@ -252,23 +265,16 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                 {/* Resumen */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-custom-black/70">Subtotal</span>
-                    <span className="font-semibold text-custom-dark-green">
-                      {formatCOP(subtotal)}
+                    <span className="text-custom-medium-green">Subtotal</span>
+                    <span className="font-semibold text-custom-medium-green">
+                      {formatCOP(discountedSubtotal)}
                     </span>
                   </div>
-                  {savings > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-custom-medium-green">Descuentos</span>
-                      <span className="font-semibold text-custom-medium-green">
-                        -{formatCOP(savings)}
-                      </span>
-                    </div>
-                  )}
+                  {/* Para evitar malos entendidos, ya no mostramos la línea de "Descuentos". */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-custom-black/70">Envío</span>
                     <span className="font-semibold text-custom-dark-green">
-                      {subtotal >= FREE_SHIPPING_MIN ? "Gratis" : formatCOP(SHIPPING_COST)}
+                      {discountedSubtotal >= FREE_SHIPPING_MIN ? "Gratis" : formatCOP(SHIPPING_COST)}
                     </span>
                   </div>
                   <div className="my-1 h-px bg-white/50" />
@@ -282,14 +288,20 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
 
                 <Button
                   size="lg"
-                  className="h-12 w-full gap-2 rounded-xl bg-custom-dark-green text-base font-bold text-white shadow-lg shadow-custom-dark-green/20 hover:bg-custom-medium-green hover:shadow-xl transition-all duration-300"
+                  className="group relative h-12 w-full overflow-hidden rounded-xl border border-custom-medium-green/30 bg-gradient-to-r from-custom-light-green to-custom-medium-green px-4 text-base font-bold text-white shadow-lg shadow-custom-medium-green/20 transition-all duration-300 hover:from-custom-medium-green hover:to-custom-dark-green hover:shadow-xl hover:border-custom-medium-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/60 data-[hover=true]:from-custom-medium-green data-[hover=true]:to-custom-dark-green"
                   onPress={() => {
                     close();
                     window.location.href = "/checkout";
                   }}
                 >
-                  Ir al pago
-                  <ArrowRight className="size-4" />
+                  <span className="relative z-[1] inline-flex items-center justify-center gap-2">
+                    Ir al pago
+                    <ArrowRight className="size-4 shrink-0" />
+                  </span>
+                  <span
+                    className="pointer-events-none absolute -inset-px z-0 translate-x-[-120%] bg-white/20 opacity-0 transition duration-700 group-hover:translate-x-[120%] group-hover:opacity-100 group-data-[hover=true]:translate-x-[120%] group-data-[hover=true]:opacity-100"
+                    aria-hidden
+                  />
                 </Button>
 
                 <p className="text-center text-[10px] leading-relaxed text-custom-black/50">

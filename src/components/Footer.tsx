@@ -13,7 +13,7 @@ const footerSections: Record<string, FooterLink[]> = {
   ],
   Compañía: [
     { label: "Nuestros productores", href: "/producers" },
-    { label: "Contacto", href: "#" },
+    { label: "Contacto", href: "/contacto" },
   ],
   Redes: [
     { label: "Instagram", href: "#" },
