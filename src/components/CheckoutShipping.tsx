@@ -142,7 +142,7 @@ export default function CheckoutShipping() {
         taxReturnBase: 0,
       };
 
-      debugger;
+
       const res = await fetch("/api/payu/prepare", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -314,7 +314,7 @@ export default function CheckoutShipping() {
                   />
                   <SelectField
                     icon={<MapPin className="size-4" />}
-                    label="Ciudad"
+                    label="Municipio"
                     value={muniSeleccionado}
                     onChange={(v) => {
                       setMuniSeleccionado(v);
