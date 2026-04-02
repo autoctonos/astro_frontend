@@ -324,6 +324,7 @@ export default function CheckoutShipping() {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="relative w-full resize-none bg-transparent px-4 py-3 text-sm text-custom-black placeholder:text-custom-black/50 focus:outline-none"
+                      maxLength={100}
                     />
                   </div>
                 </div>
