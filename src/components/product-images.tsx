@@ -22,12 +22,12 @@ export default function ProductImages({
   const src = normalizeImage(images[current]?.url_imagen);
 
   return (
-    <div className="mx-auto w-full max-w-xs sm:max-w-sm md:max-w-md">
-      <div className="relative group aspect-square w-full overflow-hidden rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] transition-all duration-300 ease-in-out hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 cursor-default">
+    <div className="mx-auto w-full">
+      <div className="relative group w-full overflow-hidden rounded-2xl bg-white/60 backdrop-blur-md border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] transition-all duration-300 ease-in-out hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 cursor-default flex items-center justify-center p-4">
         <img
           src={src}
           alt={productName}
-          className={`h-full w-full object-cover ${outOfStock ? "grayscale opacity-60" : ""}`}
+          className={`max-h-[700px] w-full object-contain ${outOfStock ? "grayscale opacity-60" : ""}`}
           loading="lazy"
         />
         {outOfStock && (
@@ -55,7 +55,7 @@ export default function ProductImages({
                 <img
                   src={normalizeImage(img.url_imagen)}
                   alt={`${productName} ${i + 1}`}
-                className={`h-full w-full object-cover transition group-hover:scale-[1.02] ${outOfStock ? "grayscale opacity-60" : ""}`}
+                className={`h-full w-full object-contain transition group-hover:scale-[1.02] ${outOfStock ? "grayscale opacity-60" : ""}`}
                   loading="lazy"
                 />
               </button>
