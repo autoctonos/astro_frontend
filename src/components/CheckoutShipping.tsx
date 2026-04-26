@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { useCartStore, formatCOP } from "@/stores/cart";
 import { asset } from "@/lib/assets";
+import { fetchDepartamentos, fetchMunicipios } from "@/api/ubicaciones";
+import { useEffect } from "react";
+import type { ChangeEvent } from "react";
 
 type Buyer = {
   fullName: string;
@@ -54,13 +57,7 @@ const DOC_TYPES = [
   { value: "Passport", label: "Pasaporte" },
 ];
 
-const CO_DEPARTMENTS = [
-  "Amazonas", "Antioquia", "Arauca", "Atlántico", "Bogotá D.C.", "Bolívar", "Boyacá", "Caldas",
-  "Caquetá", "Casanare", "Cauca", "Cesar", "Chocó", "Córdoba", "Cundinamarca", "Guainía",
-  "Guaviare", "Huila", "La Guajira", "Magdalena", "Meta", "Nariño", "Norte de Santander",
-  "Putumayo", "Quindío", "Risaralda", "San Andrés y Providencia", "Santander", "Sucre",
-  "Tolima", "Valle del Cauca", "Vaupés", "Vichada",
-];
+
 
 const STEPS = [
   { id: 1, label: "Datos", icon: User },
@@ -72,6 +69,11 @@ const FREE_SHIPPING_MIN = 200000;
 const SHIPPING_COST = 15000;
 
 export default function CheckoutShipping() {
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [municipios, setMunicipios] = useState<any[]>([]);
+  const [depSeleccionado, setDepSeleccionado] = useState("");
+  const [muniSeleccionado, setMuniSeleccionado] = useState("");
+
   const items = useCartStore((s) => s.items);
 
   const [currentStep] = useState(1);
@@ -84,7 +86,7 @@ export default function CheckoutShipping() {
   });
   const [shipping, setShipping] = useState<Shipping>({
     country: "CO",
-    state: "Cundinamarca",
+    state: "",
     city: "",
     address: "",
     zip: "",
@@ -139,6 +141,8 @@ export default function CheckoutShipping() {
         tax: 0,
         taxReturnBase: 0,
       };
+
+
       const res = await fetch("/api/payu/prepare", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -181,6 +185,22 @@ export default function CheckoutShipping() {
     setShipping((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
+
+
+
+  useEffect(() => {
+    fetchDepartamentos().then((data: any) => setDepartamentos(data?.results || data));
+  }, []);
+
+
+  useEffect(() => {
+    if (depSeleccionado) {
+      fetchMunicipios(depSeleccionado).then((data: any) => setMunicipios(data?.results || data));
+    } else {
+      setMunicipios([]);
+    }
+  }, [depSeleccionado]);
+
 
   return (
     <section className="py-8 lg:py-14">
@@ -280,18 +300,29 @@ export default function CheckoutShipping() {
                   <SelectField
                     icon={<MapPin className="size-4" />}
                     label="Departamento"
-                    value={shipping.state}
-                    onChange={(v) => handleShipping("state", v)}
-                    options={CO_DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+                    value={depSeleccionado}
+                    onChange={(v) => {
+                      setDepSeleccionado(v);
+                      const depName = departamentos.find((d: any) => String(d.id_departamento) === v)?.nombre || "";
+                      handleShipping("state", depName);
+                      setMuniSeleccionado("");
+                      handleShipping("city", "");
+                    }}
+                    options={departamentos.map((d: any) => ({ value: String(d.id_departamento), label: d.nombre }))}
                     placeholder="Seleccionar"
                     error={errors.state}
                   />
-                  <InputField
+                  <SelectField
                     icon={<MapPin className="size-4" />}
-                    label="Ciudad"
-                    value={shipping.city}
-                    onChange={(v) => handleShipping("city", v)}
-                    placeholder="Tu ciudad"
+                    label="Municipio"
+                    value={muniSeleccionado}
+                    onChange={(v) => {
+                      setMuniSeleccionado(v);
+                      const muniName = municipios.find((m: any) => String(m.id_municipio) === v)?.nombre || "";
+                      handleShipping("city", muniName);
+                    }}
+                    options={municipios.map((m: any) => ({ value: String(m.id_municipio), label: m.nombre }))}
+                    placeholder="Seleccionar"
                     error={errors.city}
                   />
                   <InputField
