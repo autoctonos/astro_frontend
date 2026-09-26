@@ -11,6 +11,21 @@ export type CartItem = {
   category?: string;
   /** Precio original antes de descuento (para mostrar ahorro). */
   originalPrice?: number;
+  /**
+   * Peso de despacho en kg. Sólo display: la cotización de envío la resuelve el backend
+   * a partir del `id_producto`, nunca de este valor.
+   */
+  weightKg?: number;
+  /** Requiere cadena de frío. Sólo display, por la misma razón que `weightKg`. */
+  requiresCooling?: boolean;
+};
+
+/** Precios/atributos que llegan de la cotización y re-sincronizan un carrito rancio. */
+export type CartPricingPatch = {
+  id: CartItem["id"];
+  price?: number;
+  weightKg?: number;
+  requiresCooling?: boolean;
 };
 
 type CartState = {
@@ -24,6 +39,7 @@ type CartState = {
   remove: (id: CartItem["id"]) => void;
   inc: (id: CartItem["id"]) => void;
   dec: (id: CartItem["id"]) => void;
+  syncPricing: (patches: CartPricingPatch[]) => void;
 };
 
 export const useCartStore = create<CartState>()(
@@ -46,6 +62,8 @@ export const useCartStore = create<CartState>()(
             quantity: existing.quantity + item.quantity,
             ...(item.category && !existing.category ? { category: item.category } : {}),
             ...(item.originalPrice != null && existing.originalPrice == null ? { originalPrice: item.originalPrice } : {}),
+            ...(item.weightKg != null ? { weightKg: item.weightKg } : {}),
+            ...(item.requiresCooling != null ? { requiresCooling: item.requiresCooling } : {}),
           };
           return { items: next };
         }),
@@ -60,11 +78,42 @@ export const useCartStore = create<CartState>()(
             .map((it) => (it.id === id ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))
             .filter((it) => it.quantity > 0),
         })),
+      syncPricing: (patches) =>
+        set(({ items }) => {
+          if (patches.length === 0) return { items };
+          const byId = new Map(patches.map((p) => [String(p.id), p]));
+          let changed = false;
+          const next = items.map((it) => {
+            const patch = byId.get(String(it.id));
+            if (!patch) return it;
+            const updated = {
+              ...it,
+              ...(patch.price != null && patch.price !== it.price ? { price: patch.price } : {}),
+              ...(patch.weightKg != null && patch.weightKg !== it.weightKg
+                ? { weightKg: patch.weightKg }
+                : {}),
+              ...(patch.requiresCooling != null && patch.requiresCooling !== it.requiresCooling
+                ? { requiresCooling: patch.requiresCooling }
+                : {}),
+            };
+            if (updated.price !== it.price ||
+                updated.weightKg !== it.weightKg ||
+                updated.requiresCooling !== it.requiresCooling) {
+              changed = true;
+              return updated;
+            }
+            return it;
+          });
+          return changed ? { items: next } : { items };
+        }),
     }),
     {
+      // La key NO cambia: un carrito viejo debe seguir funcionando. La cotización va por
+      // `id_producto`, así que un item sin `weightKg` cotiza exactamente igual de bien.
       name: "cart-v1",
       storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : (undefined as any))),
-      version: 1,
+      version: 2,
+      migrate: (persisted) => persisted as CartState,
     }
   )
 );
@@ -90,3 +139,5 @@ export const decCart = (id: CartItem["id"]) => useCartStore.getState().dec(id);
 export const openCart = () => useCartStore.getState().open();
 export const closeCart = () => useCartStore.getState().close();
 export const clearCart = () => useCartStore.getState().clear();
+export const syncCartPricing = (patches: CartPricingPatch[]) =>
+  useCartStore.getState().syncPricing(patches);

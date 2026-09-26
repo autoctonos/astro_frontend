@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import {
   User,
   MapPin,
   CreditCard,
   ChevronRight,
-  Check,
   Mail,
   Phone,
   FileText,
@@ -16,12 +15,23 @@ import {
   Tag,
   Package,
   Leaf,
+  Snowflake,
+  AlertCircle,
+  RefreshCw,
+  Info,
+  Clock,
 } from "lucide-react";
-import { useCartStore, formatCOP } from "@/stores/cart";
+import { useCartStore, formatCOP, syncCartPricing } from "@/stores/cart";
 import { asset } from "@/lib/assets";
-import { fetchDepartamentos, fetchMunicipios } from "@/api/ubicaciones";
-import { useEffect } from "react";
-import type { ChangeEvent } from "react";
+import { useShippingDestinos, useShippingQuote } from "@/hooks/useShippingQuote";
+import type { ShippingQuoteError } from "@/hooks/useShippingQuote";
+import {
+  CotizacionSchema,
+  entregaLabel,
+  esPositivo,
+  trayectoLabel,
+  type Cotizacion,
+} from "@/api/schemas/shipping";
 
 type Buyer = {
   fullName: string;
@@ -31,9 +41,15 @@ type Buyer = {
   docNumber: string;
 };
 
+/**
+ * El destino viaja con ids: los ids alimentan la cotización, los nombres se derivan de
+ * la opción elegida y son los que van a los campos `shippingState`/`shippingCity` de PayU.
+ */
 type Shipping = {
   country: string;
+  stateId: number | null;
   state: string;
+  cityId: number | null;
   city: string;
   address: string;
   zip?: string;
@@ -46,7 +62,7 @@ const checkoutSchema = z.object({
   docType: z.string().min(1, "Selecciona un tipo de documento"),
   docNumber: z.string().min(1, "El número de documento es requerido"),
   state: z.string().min(1, "Selecciona un departamento"),
-  city: z.string().min(1, "La ciudad es requerida"),
+  cityId: z.number().int().positive("Selecciona un municipio"),
   address: z.string().min(1, "La dirección es requerida"),
 });
 
@@ -57,16 +73,13 @@ const DOC_TYPES = [
   { value: "Passport", label: "Pasaporte" },
 ];
 
-
-
-const STEPS = [
-  { id: 1, label: "Datos", icon: User },
-  { id: 2, label: "Envío", icon: MapPin },
-  { id: 3, label: "Pago", icon: CreditCard },
-];
-
-const FREE_SHIPPING_MIN = 200000;
-const SHIPPING_COST = 15000;
+/** Códigos 422 donde `contexto.id_producto` señala el producto culpable del carrito. */
+const CODIGOS_CON_PRODUCTO = new Set([
+  "producto_sin_peso",
+  "producto_sin_productor",
+  "producto_sin_origen",
+  "producto_no_disponible",
+]);
 
 export default function CheckoutShipping() {
   const [departamentos, setDepartamentos] = useState<any[]>([]);
@@ -76,7 +89,6 @@ export default function CheckoutShipping() {
 
   const items = useCartStore((s) => s.items);
 
-  const [currentStep] = useState(1);
   const [buyer, setBuyer] = useState<Buyer>({
     fullName: "",
     email: "",
@@ -86,7 +98,9 @@ export default function CheckoutShipping() {
   });
   const [shipping, setShipping] = useState<Shipping>({
     country: "CO",
+    stateId: null,
     state: "",
+    cityId: null,
     city: "",
     address: "",
     zip: "",
@@ -95,22 +109,83 @@ export default function CheckoutShipping() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const disabled = items.length === 0 || submitting;
+  /* ------------------------------ destinos ------------------------------ */
 
-  function validate() {
-    const result = checkoutSchema.safeParse({ ...buyer, ...shipping });
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors(Object.fromEntries(
-        Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""])
-      ));
-      return false;
+  const { destinos, loading: destinosLoading, error: destinosError } = useShippingDestinos();
+  const departamentos = destinos?.departamentos ?? [];
+  const municipios = useMemo(
+    () => departamentos.find((d) => d.id_departamento === shipping.stateId)?.municipios ?? [],
+    [departamentos, shipping.stateId]
+  );
+
+  /* ------------------------------ cotización ------------------------------ */
+
+  const quoteItems = useMemo(
+    () =>
+      items.map((it) => ({
+        id: it.id,
+        quantity: it.quantity,
+        name: it.name,
+        price: it.price,
+        weightKg: it.weightKg,
+        requiresCooling: it.requiresCooling,
+      })),
+    [items]
+  );
+
+  const {
+    quote,
+    loading: quoteLoading,
+    error: quoteError,
+    refetch,
+  } = useShippingQuote({ cityId: shipping.cityId, items: quoteItems });
+
+  /**
+   * Cotización devuelta por el servidor al preparar el pago. Manda sobre la del cliente
+   * cuando el monto cambió entre que se mostró el resumen y se apretó el botón.
+   */
+  const [serverQuote, setServerQuote] = useState<Cotizacion | null>(null);
+  const [repricedNotice, setRepricedNotice] = useState<string | null>(null);
+  useEffect(() => {
+    setServerQuote(null);
+    setRepricedNotice(null);
+  }, [quote]);
+
+  const activeQuote = serverQuote ?? quote;
+
+  /* --------------------- reconciliación de precios --------------------- */
+
+  const [priceNotice, setPriceNotice] = useState(false);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  useEffect(() => {
+    if (!activeQuote) {
+      setPriceNotice(false);
+      return;
     }
-    setErrors({});
-    return true;
-  }
+    const backendSubtotal = Number(activeQuote.totales.subtotal_productos);
+    if (!Number.isFinite(backendSubtotal)) return;
+    const cartSubtotal = itemsRef.current.reduce((s, i) => s + i.price * i.quantity, 0);
+    if (Math.abs(backendSubtotal - cartSubtotal) < 0.5) {
+      setPriceNotice(false);
+      return;
+    }
+    const patches = activeQuote.grupos
+      .flatMap((g) => g.items)
+      .map((li) => ({
+        id: li.id_producto,
+        price: Number(li.precio_unitario),
+        weightKg: Number(li.peso_unitario_kg),
+        requiresCooling: li.requiere_frio,
+      }))
+      .filter((p) => Number.isFinite(p.price));
+    syncCartPricing(patches);
+    setPriceNotice(true);
+  }, [activeQuote]);
 
-  const discountedSubtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  /* ------------------------------ totales ------------------------------ */
+
   const listSubtotal = items.reduce(
     (s, i) =>
       s +
@@ -120,26 +195,64 @@ export default function CheckoutShipping() {
     0
   );
   const savings = items.reduce(
-    (s, i) => s + (i.originalPrice && i.originalPrice > i.price ? (i.originalPrice - i.price) * i.quantity : 0),
+    (s, i) =>
+      s + (i.originalPrice && i.originalPrice > i.price ? (i.originalPrice - i.price) * i.quantity : 0),
     0
   );
-  const shippingCost = discountedSubtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
-  const total = discountedSubtotal + shippingCost;
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
+  const neveras = activeQuote?.grupos.reduce((s, g) => s + g.neveras, 0) ?? 0;
 
-  async function goToPayU() {
+  // Sin cotización válida no hay monto que cobrar: el pago queda bloqueado.
+  const disabled =
+    items.length === 0 || submitting || !activeQuote || quoteLoading || !!quoteError;
+
+  function validate() {
+    const result = checkoutSchema.safeParse({
+      ...buyer,
+      ...shipping,
+      cityId: shipping.cityId ?? 0,
+    });
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      setErrors(
+        Object.fromEntries(Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""]))
+      );
+      return false;
+    }
+    setErrors({});
+    return true;
+  }
+
+  /** Mensaje de error de cotización, nombrando el producto cuando el 422 lo identifica. */
+  function describeQuoteError(err: ShippingQuoteError) {
+    const idProducto = err.contexto?.id_producto;
+    let producto: string | undefined;
+    if (err.code && CODIGOS_CON_PRODUCTO.has(err.code) && idProducto != null) {
+      const item = items.find((i) => String(i.id) === String(idProducto));
+      producto = item?.name ?? (err.contexto?.nombre as string | undefined);
+    }
+    return { detail: err.detail, producto };
+  }
+
+  const quoteErrorInfo = quoteError ? describeQuoteError(quoteError) : null;
+
+  async function goToPayU(confirmar = false) {
     if (!validate()) return;
+    if (!activeQuote) return;
     setSubmitting(true);
     try {
       const payload = {
         buyer,
         shipping,
-        shippingCost,
-        items: items.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity })),
+        items: items.map((it) => ({ id: it.id, quantity: it.quantity })),
+        notes,
+        // Sólo informativo: el servidor firma su propio total, nunca este.
+        expectedTotal: activeQuote.totales.total,
         description: `Compra Autóctonos (${items.length} ítems)`,
         currency: "COP",
-        tax: 0,
-        taxReturnBase: 0,
+        // Mientras sea false, el servidor sólo cotiza y no crea el Pedido: evita dejar
+        // un Pedido abandonado por cada chequeo de reprecio.
+        confirmar,
       };
 
 
@@ -150,6 +263,23 @@ export default function CheckoutShipping() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "No se pudo preparar el pago.");
+
+      // El monto cambió: se cancela el auto-submit y se pide confirmación explícita.
+      if (data?.repriced && !confirmar) {
+        const parsed = CotizacionSchema.safeParse(data.quote);
+        if (parsed.success) {
+          setServerQuote(parsed.data);
+          setRepricedNotice(
+            `El total de tu pedido cambió a ${formatCOP(parsed.data.totales.total)}. Revisa el resumen y confirma para continuar.`
+          );
+        } else {
+          setRepricedNotice(
+            "El total de tu pedido cambió. Revisa el resumen y confirma para continuar."
+          );
+        }
+        setSubmitting(false);
+        return;
+      }
 
       const form = document.createElement("form");
       form.method = "POST";
@@ -162,13 +292,6 @@ export default function CheckoutShipping() {
         input.value = String(v);
         form.appendChild(input);
       });
-      if (notes) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = "extra1";
-        input.value = notes.slice(0, 250);
-        form.appendChild(input);
-      }
       document.body.appendChild(form);
       form.submit();
     } catch (e: unknown) {
@@ -181,26 +304,33 @@ export default function CheckoutShipping() {
     setBuyer((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
-  const handleShipping = (field: keyof Shipping, value: string) => {
+  const handleShipping = (field: "address" | "zip" | "country", value: string) => {
     setShipping((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   };
-
-
-
-  useEffect(() => {
-    fetchDepartamentos().then((data: any) => setDepartamentos(data?.results || data));
-  }, []);
-
-
-  useEffect(() => {
-    if (depSeleccionado) {
-      fetchMunicipios(depSeleccionado).then((data: any) => setMunicipios(data?.results || data));
-    } else {
-      setMunicipios([]);
-    }
-  }, [depSeleccionado]);
-
+  const handleDepartamento = (value: string) => {
+    const id = Number(value);
+    const dep = departamentos.find((d) => d.id_departamento === id);
+    setShipping((prev) => ({
+      ...prev,
+      stateId: dep ? dep.id_departamento : null,
+      state: dep ? dep.nombre : "",
+      // Cambiar de departamento invalida el municipio elegido.
+      cityId: null,
+      city: "",
+    }));
+    setErrors((prev) => ({ ...prev, state: "", cityId: "" }));
+  };
+  const handleMunicipio = (value: string) => {
+    const id = Number(value);
+    const muni = municipios.find((m) => m.id_municipio === id);
+    setShipping((prev) => ({
+      ...prev,
+      cityId: muni ? muni.id_municipio : null,
+      city: muni ? muni.nombre : "",
+    }));
+    setErrors((prev) => ({ ...prev, cityId: "" }));
+  };
 
   return (
     <section className="py-8 lg:py-14">
@@ -289,6 +419,14 @@ export default function CheckoutShipping() {
                     Dirección de envío
                   </h2>
                 </div>
+
+                {destinosError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2.5 text-xs text-red-700">
+                    <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{destinosError}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <SelectField
                     icon={<MapPin className="size-4" />}
@@ -300,30 +438,29 @@ export default function CheckoutShipping() {
                   <SelectField
                     icon={<MapPin className="size-4" />}
                     label="Departamento"
-                    value={depSeleccionado}
-                    onChange={(v) => {
-                      setDepSeleccionado(v);
-                      const depName = departamentos.find((d: any) => String(d.id_departamento) === v)?.nombre || "";
-                      handleShipping("state", depName);
-                      setMuniSeleccionado("");
-                      handleShipping("city", "");
-                    }}
-                    options={departamentos.map((d: any) => ({ value: String(d.id_departamento), label: d.nombre }))}
-                    placeholder="Seleccionar"
+                    value={shipping.stateId ? String(shipping.stateId) : ""}
+                    onChange={handleDepartamento}
+                    options={departamentos.map((d) => ({
+                      value: String(d.id_departamento),
+                      label: d.nombre,
+                    }))}
+                    placeholder={destinosLoading ? "Cargando destinos..." : "Seleccionar"}
+                    disabled={destinosLoading || departamentos.length === 0}
                     error={errors.state}
                   />
                   <SelectField
                     icon={<MapPin className="size-4" />}
                     label="Municipio"
-                    value={muniSeleccionado}
-                    onChange={(v) => {
-                      setMuniSeleccionado(v);
-                      const muniName = municipios.find((m: any) => String(m.id_municipio) === v)?.nombre || "";
-                      handleShipping("city", muniName);
-                    }}
-                    options={municipios.map((m: any) => ({ value: String(m.id_municipio), label: m.nombre }))}
-                    placeholder="Seleccionar"
-                    error={errors.city}
+                    value={shipping.cityId ? String(shipping.cityId) : ""}
+                    onChange={handleMunicipio}
+                    options={municipios.map((m) => ({
+                      value: String(m.id_municipio),
+                      label: m.nombre,
+                    }))}
+                    placeholder={shipping.stateId ? "Seleccionar" : "Elige un departamento"}
+                    disabled={!shipping.stateId}
+                    error={errors.cityId}
+                    hint="Sólo mostramos los municipios con cobertura de envío."
                   />
                   <InputField
                     icon={<MapPin className="size-4" />}
@@ -440,6 +577,15 @@ export default function CheckoutShipping() {
                   ))}
                 </div>
 
+                {priceNotice && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-800">
+                    <Info className="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                      Actualizamos los precios de tu carrito con los valores vigentes de la tienda.
+                    </span>
+                  </div>
+                )}
+
                 <div className="mb-4 h-px bg-custom-medium-green/20" />
 
                 <div className="mb-5 flex flex-col gap-2.5">
@@ -458,23 +604,161 @@ export default function CheckoutShipping() {
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1 text-custom-black/70">
-                      <Truck className="size-3" />
-                      Envío
-                    </span>
-                    <span className="font-medium text-custom-dark-green">
-                      {shippingCost === 0 ? "Gratis" : formatCOP(shippingCost)}
-                    </span>
-                  </div>
-                  {shippingCost === 0 && (
-                    <div className="relative overflow-hidden rounded-lg">
-                      <div className="absolute inset-0 rounded-lg border border-custom-dark-green/10 bg-custom-dark-green/5 backdrop-blur-sm" />
-                      <p className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-custom-dark-green">
-                        <Leaf className="size-3" />
-                        Envío gratis aplicado a tu orden
-                      </p>
+
+                  {/* ---------------------- Bloque de envío ---------------------- */}
+
+                  {!shipping.cityId && !quoteLoading && (
+                    <div className="flex items-start gap-2 rounded-lg border border-custom-dark-green/10 bg-custom-dark-green/5 px-3 py-2.5 text-xs text-custom-black/70">
+                      <Truck className="mt-0.5 size-3.5 shrink-0 text-custom-dark-green/70" />
+                      <span>Elige departamento y municipio para calcular el costo de envío.</span>
                     </div>
+                  )}
+
+                  {quoteLoading && (
+                    <div className="flex flex-col gap-2 py-1" aria-busy="true" aria-live="polite">
+                      <div className="h-3.5 w-full animate-pulse rounded bg-custom-dark-green/10" />
+                      <div className="h-3.5 w-2/3 animate-pulse rounded bg-custom-dark-green/10" />
+                      <div className="h-3.5 w-1/2 animate-pulse rounded bg-custom-dark-green/10" />
+                      <span className="text-[11px] text-custom-black/50">Calculando el envío...</span>
+                    </div>
+                  )}
+
+                  {!quoteLoading && quoteError && (
+                    <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50/70 px-3 py-2.5 text-xs text-red-700">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                        <div>
+                          <p>{quoteErrorInfo?.detail}</p>
+                          {quoteErrorInfo?.producto && (
+                            <p className="mt-1">
+                              Producto afectado: <strong>{quoteErrorInfo.producto}</strong>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refetch}
+                        className="flex items-center gap-1 self-start rounded-md border border-red-200 bg-white/70 px-2 py-1 font-semibold text-red-700 transition-colors hover:bg-white"
+                      >
+                        <RefreshCw className="size-3" />
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+
+                  {!quoteLoading && !quoteError && activeQuote && (
+                    <>
+                      {activeQuote.grupos.length > 1 && (
+                        <p className="text-xs text-custom-black/60">
+                          Tu pedido viaja en {activeQuote.grupos.length} envíos, uno por cada
+                          productor.
+                        </p>
+                      )}
+
+                      {activeQuote.grupos.map((g) => (
+                        <div
+                          key={`${g.id_productor}-${g.id_municipio_origen}`}
+                          className="space-y-1"
+                        >
+                          <div className="flex items-start justify-between gap-3 text-sm">
+                            <span className="flex items-start gap-1 text-custom-black/70">
+                              <Truck className="mt-0.5 size-3 shrink-0" />
+                              <span>
+                                Envío de {g.productor}
+                                <span className="block text-xs text-custom-black/50">
+                                  desde {g.municipio_origen} · {g.peso_facturable_kg} kg ·{" "}
+                                  {trayectoLabel(g.trayecto_aplicado)}
+                                </span>
+                                <span className="block text-xs text-custom-black/50">
+                                  Entrega estimada: {entregaLabel(g.entrega)}
+                                </span>
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-medium text-custom-dark-green">
+                              {formatCOP(g.flete)}
+                            </span>
+                          </div>
+
+                          {activeQuote.grupos.length > 1 && (
+                            <div className="flex items-center justify-between pl-4 text-xs text-custom-black/60">
+                              <span>Garantía del producto</span>
+                              <span>{formatCOP(g.sobreflete)}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <div className="flex items-start justify-between gap-3 text-sm">
+                        <span className="text-custom-black/70">
+                          Garantía del producto
+                          <span className="block text-xs text-custom-black/50">
+                            Cubre el valor de tu compra durante el transporte. No aplica el
+                            envío gratis.
+                          </span>
+                        </span>
+                        <span className="shrink-0 font-medium text-custom-dark-green">
+                          {formatCOP(activeQuote.totales.sobreflete)}
+                        </span>
+                      </div>
+
+                      {esPositivo(activeQuote.totales.empaque) && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1 text-custom-black/70">
+                            <Snowflake className="size-3" />
+                            Empaque refrigerado ({neveras} {neveras === 1 ? "nevera" : "neveras"})
+                          </span>
+                          <span className="font-medium text-custom-dark-green">
+                            {formatCOP(activeQuote.totales.empaque)}
+                          </span>
+                        </div>
+                      )}
+
+                      {esPositivo(activeQuote.totales.descuento_envio) && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1 text-custom-medium-green">
+                            <Tag className="size-3" />
+                            Descuento de envío
+                          </span>
+                          <span className="font-medium text-custom-medium-green">
+                            -{formatCOP(activeQuote.totales.descuento_envio)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between border-t border-custom-medium-green/15 pt-2.5 text-sm">
+                        <span className="font-semibold text-custom-black/80">Envío total</span>
+                        <span className="font-bold text-custom-dark-green">
+                          {formatCOP(activeQuote.totales.envio)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-custom-black/70">
+                          <Clock className="size-3" />
+                          Entrega estimada del pedido
+                        </span>
+                        <span className="font-medium text-custom-dark-green">
+                          {entregaLabel(activeQuote.entrega)}
+                        </span>
+                      </div>
+                      {activeQuote.grupos.length > 1 && (
+                        <p className="text-xs text-custom-black/50">
+                          Tu pedido está completo cuando llega el último envío.
+                        </p>
+                      )}
+
+                      {activeQuote.promocion.aplicada && (
+                        <div className="relative overflow-hidden rounded-lg">
+                          <div className="absolute inset-0 rounded-lg border border-custom-dark-green/10 bg-custom-dark-green/5 backdrop-blur-sm" />
+                          <p className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-custom-dark-green">
+                            <Leaf className="size-3" />
+                            Envío gratis aplicado: cubrimos el flete de tu pedido. La garantía
+                            del producto se cobra aparte.
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -484,26 +768,41 @@ export default function CheckoutShipping() {
                   <span className="text-base font-bold text-custom-dark-green">Total</span>
                   <div className="text-right">
                     <span className="text-2xl font-bold text-custom-dark-green">
-                      {formatCOP(total)}
+                      {activeQuote ? formatCOP(activeQuote.totales.total) : "—"}
                     </span>
-                    <p className="mt-0.5 text-[10px] text-custom-black/60">Impuestos incluidos</p>
+                    <p className="mt-0.5 text-[10px] text-custom-black/60">
+                      {activeQuote ? "Producto + envío" : "Falta calcular el envío"}
+                    </p>
                   </div>
                 </div>
+
+                {repricedNotice && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-800">
+                    <Info className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{repricedNotice}</span>
+                  </div>
+                )}
 
                 <button
                   type="button"
                   disabled={disabled}
-                  onClick={goToPayU}
+                  onClick={() => goToPayU(!!repricedNotice)}
                   className="group flex w-full items-center justify-center gap-2 rounded-xl bg-custom-dark-green py-3.5 text-base font-bold text-white shadow-lg shadow-custom-dark-green/20 transition-all duration-300 hover:bg-custom-medium-green hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <CreditCard className="size-4" />
-                  Pagar con PayU
+                  {repricedNotice ? "Confirmar y pagar" : "Pagar con PayU"}
                   <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
 
                 {items.length === 0 && (
                   <p className="mt-3 text-center text-sm text-custom-black/60">
                     Tu carrito está vacío.
+                  </p>
+                )}
+
+                {items.length > 0 && !activeQuote && !quoteLoading && !quoteError && (
+                  <p className="mt-3 text-center text-sm text-custom-black/60">
+                    Necesitamos tu destino para poder cobrarte el envío.
                   </p>
                 )}
 
@@ -570,6 +869,8 @@ function SelectField({
   options,
   placeholder,
   error,
+  disabled = false,
+  hint,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -578,6 +879,8 @@ function SelectField({
   options: { value: string; label: string }[];
   placeholder?: string;
   error?: string;
+  disabled?: boolean;
+  hint?: string;
 }) {
   return (
     <div>
@@ -586,11 +889,12 @@ function SelectField({
         {label}
       </label>
       <div className="group relative overflow-hidden rounded-xl">
-        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"}`} />
+        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"} ${disabled ? "opacity-60" : ""}`} />
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="relative h-11 w-full cursor-pointer appearance-none bg-transparent pr-10 pl-4 text-sm text-custom-black focus:outline-none"
+          disabled={disabled}
+          className="relative h-11 w-full cursor-pointer appearance-none bg-transparent pr-10 pl-4 text-sm text-custom-black focus:outline-none disabled:cursor-not-allowed"
         >
           {placeholder && (
             <option value="">{placeholder}</option>
@@ -603,7 +907,11 @@ function SelectField({
         </select>
         <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-custom-black/50" />
       </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {error ? (
+        <p className="mt-1 text-xs text-red-500">{error}</p>
+      ) : hint ? (
+        <p className="mt-1 text-[10px] text-custom-black/50">{hint}</p>
+      ) : null}
     </div>
   );
 }
