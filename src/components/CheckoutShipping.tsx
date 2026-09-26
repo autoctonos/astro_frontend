@@ -41,10 +41,6 @@ type Buyer = {
   docNumber: string;
 };
 
-/**
- * El destino viaja con ids: los ids alimentan la cotización, los nombres se derivan de
- * la opción elegida y son los que van a los campos `shippingState`/`shippingCity` de PayU.
- */
 type Shipping = {
   country: string;
   stateId: number | null;
@@ -73,7 +69,6 @@ const DOC_TYPES = [
   { value: "Passport", label: "Pasaporte" },
 ];
 
-/** Códigos 422 donde `contexto.id_producto` señala el producto culpable del carrito. */
 const CODIGOS_CON_PRODUCTO = new Set([
   "producto_sin_peso",
   "producto_sin_productor",
@@ -82,11 +77,6 @@ const CODIGOS_CON_PRODUCTO = new Set([
 ]);
 
 export default function CheckoutShipping() {
-  const [departamentos, setDepartamentos] = useState<any[]>([]);
-  const [municipios, setMunicipios] = useState<any[]>([]);
-  const [depSeleccionado, setDepSeleccionado] = useState("");
-  const [muniSeleccionado, setMuniSeleccionado] = useState("");
-
   const items = useCartStore((s) => s.items);
 
   const [buyer, setBuyer] = useState<Buyer>({
@@ -118,8 +108,6 @@ export default function CheckoutShipping() {
     [departamentos, shipping.stateId]
   );
 
-  /* ------------------------------ cotización ------------------------------ */
-
   const quoteItems = useMemo(
     () =>
       items.map((it) => ({
@@ -140,10 +128,6 @@ export default function CheckoutShipping() {
     refetch,
   } = useShippingQuote({ cityId: shipping.cityId, items: quoteItems });
 
-  /**
-   * Cotización devuelta por el servidor al preparar el pago. Manda sobre la del cliente
-   * cuando el monto cambió entre que se mostró el resumen y se apretó el botón.
-   */
   const [serverQuote, setServerQuote] = useState<Cotizacion | null>(null);
   const [repricedNotice, setRepricedNotice] = useState<string | null>(null);
   useEffect(() => {
@@ -152,8 +136,6 @@ export default function CheckoutShipping() {
   }, [quote]);
 
   const activeQuote = serverQuote ?? quote;
-
-  /* --------------------- reconciliación de precios --------------------- */
 
   const [priceNotice, setPriceNotice] = useState(false);
   const itemsRef = useRef(items);
@@ -184,8 +166,6 @@ export default function CheckoutShipping() {
     setPriceNotice(true);
   }, [activeQuote]);
 
-  /* ------------------------------ totales ------------------------------ */
-
   const listSubtotal = items.reduce(
     (s, i) =>
       s +
@@ -202,7 +182,6 @@ export default function CheckoutShipping() {
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const neveras = activeQuote?.grupos.reduce((s, g) => s + g.neveras, 0) ?? 0;
 
-  // Sin cotización válida no hay monto que cobrar: el pago queda bloqueado.
   const disabled =
     items.length === 0 || submitting || !activeQuote || quoteLoading || !!quoteError;
 
@@ -223,7 +202,6 @@ export default function CheckoutShipping() {
     return true;
   }
 
-  /** Mensaje de error de cotización, nombrando el producto cuando el 422 lo identifica. */
   function describeQuoteError(err: ShippingQuoteError) {
     const idProducto = err.contexto?.id_producto;
     let producto: string | undefined;
@@ -246,12 +224,9 @@ export default function CheckoutShipping() {
         shipping,
         items: items.map((it) => ({ id: it.id, quantity: it.quantity })),
         notes,
-        // Sólo informativo: el servidor firma su propio total, nunca este.
         expectedTotal: activeQuote.totales.total,
         description: `Compra Autóctonos (${items.length} ítems)`,
         currency: "COP",
-        // Mientras sea false, el servidor sólo cotiza y no crea el Pedido: evita dejar
-        // un Pedido abandonado por cada chequeo de reprecio.
         confirmar,
       };
 
@@ -264,7 +239,6 @@ export default function CheckoutShipping() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "No se pudo preparar el pago.");
 
-      // El monto cambió: se cancela el auto-submit y se pide confirmación explícita.
       if (data?.repriced && !confirmar) {
         const parsed = CotizacionSchema.safeParse(data.quote);
         if (parsed.success) {
@@ -315,7 +289,6 @@ export default function CheckoutShipping() {
       ...prev,
       stateId: dep ? dep.id_departamento : null,
       state: dep ? dep.nombre : "",
-      // Cambiar de departamento invalida el municipio elegido.
       cityId: null,
       city: "",
     }));
@@ -345,9 +318,7 @@ export default function CheckoutShipping() {
         </div>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5 lg:gap-8">
-          {/* Form */}
           <div className="flex flex-col gap-6 lg:col-span-3">
-            {/* Comprador */}
             <div className="relative overflow-hidden rounded-2xl">
               <div className="absolute inset-0 rounded-2xl border border-white/55 bg-white/50 shadow-sm backdrop-blur-2xl" />
               <div className="relative p-6 lg:p-8">
