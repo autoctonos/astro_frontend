@@ -18,8 +18,15 @@ import {
 } from "@/stores/cart";
 import { asset } from "@/lib/assets";
 
+// Umbral del envío gratis, sólo para la barra de progreso. El costo real del envío lo
+// calcula el backend en el checkout: depende del destino, del peso y de cuántos
+// productores despachan el pedido, así que aquí no se puede adivinar un monto.
 const FREE_SHIPPING_MIN = 200000;
-const SHIPPING_COST = 15000;
+
+// Ocultar la barra de "Faltan $X para flete gratis" mientras se define con el cliente
+// si el envío gratis por monto se sostiene. La lógica (cálculo, barra de progreso,
+// PromocionEnvio en el backend) queda intacta: poner esto en true la reactiva.
+const SHOW_FREE_SHIPPING_PROGRESS = false;
 
 export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
   const isOpen = useCartStore((s) => s.isOpen);
@@ -75,9 +82,6 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
         : 0),
     0
   );
-  const shipping = discountedSubtotal >= FREE_SHIPPING_MIN ? 0 : SHIPPING_COST;
-  
-  const totalWithShipping = discountedSubtotal + shipping;
   const progressPct = Math.min(100, (discountedSubtotal / FREE_SHIPPING_MIN) * 100);
 
   return (
@@ -241,26 +245,30 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
             <div className="relative mt-auto shrink-0">
               <div className="absolute inset-0 border-t border-white/60 bg-white/50 backdrop-blur-2xl" />
               <div className="relative flex flex-col gap-4 px-5 py-5">
-                {/* Progreso envío gratis */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1 text-custom-dark-green/80">
-                      <Leaf className="size-3 text-custom-medium-green" />
-                      {discountedSubtotal >= FREE_SHIPPING_MIN
-                        ? "Envío gratis incluido"
-                        : `Faltan ${formatCOP(FREE_SHIPPING_MIN - discountedSubtotal)} para envío gratis`}
-                    </span>
-                    <span className="font-semibold text-custom-medium-green">
-                      {formatCOP(FREE_SHIPPING_MIN)}
-                    </span>
+                {/* Progreso envío gratis — oculto a pedido del cliente mientras se define
+                    si el envío gratis se sostiene o no. Lógica y componente intactos:
+                    poner SHOW_FREE_SHIPPING_PROGRESS en true para reactivarlo. */}
+                {SHOW_FREE_SHIPPING_PROGRESS && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-custom-dark-green/80">
+                        <Leaf className="size-3 text-custom-medium-green" />
+                        {discountedSubtotal >= FREE_SHIPPING_MIN
+                          ? "Flete gratis en este pedido"
+                          : `Faltan ${formatCOP(FREE_SHIPPING_MIN - discountedSubtotal)} para flete gratis`}
+                      </span>
+                      <span className="font-semibold text-custom-medium-green">
+                        {formatCOP(FREE_SHIPPING_MIN)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/50">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-custom-medium-green/80 to-custom-dark-green transition-all duration-500"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/50">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-custom-medium-green/80 to-custom-dark-green transition-all duration-500"
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Resumen */}
                 <div className="flex flex-col gap-2">
@@ -273,17 +281,20 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                   {/* Para evitar malos entendidos, ya no mostramos la línea de "Descuentos". */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-custom-black/70">Envío</span>
-                    <span className="font-semibold text-custom-dark-green">
-                      {discountedSubtotal >= FREE_SHIPPING_MIN ? "Gratis" : formatCOP(SHIPPING_COST)}
+                    <span className="text-xs font-medium text-custom-black/60">
+                      Se calcula en el checkout
                     </span>
                   </div>
                   <div className="my-1 h-px bg-white/50" />
                   <div className="flex items-center justify-between">
                     <span className="text-base font-bold text-custom-dark-green">Total</span>
                     <span className="text-xl font-bold text-custom-dark-green">
-                      {formatCOP(totalWithShipping)}
+                      {formatCOP(discountedSubtotal)}
                     </span>
                   </div>
+                  <p className="text-[10px] text-custom-black/50">
+                    No incluye envío. Se calcula en el checkout con tu destino.
+                  </p>
                 </div>
 
                 <Button
@@ -305,8 +316,7 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                 </Button>
 
                 <p className="text-center text-[10px] leading-relaxed text-custom-black/50">
-                  Impuestos calculados en el checkout. Al continuar aceptas nuestros Términos y
-                  Condiciones.
+                  Al continuar aceptas nuestros Términos y Condiciones.
                 </p>
               </div>
             </div>

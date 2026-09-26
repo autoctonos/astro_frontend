@@ -1,9 +1,9 @@
 import { Truck, Shield, Clock, Leaf } from "lucide-react";
 
 const features = [
-  { icon: Truck, title: "Envío gratis", desc: "En pedidos superiores a $200.000" },
+  { icon: Truck, title: "Flete gratis", desc: "En pedidos superiores a $200.000" },
   { icon: Shield, title: "Pago seguro", desc: "Transacciones protegidas" },
-  { icon: Clock, title: "Entrega rápida", desc: "Despacho en 24-48 horas" },
+  { icon: Clock, title: "Entrega rápida", desc: "1 a 4 días hábiles según destino" },
   { icon: Leaf, title: "100% orgánico", desc: "Productores certificados" },
 ] as const;
 
