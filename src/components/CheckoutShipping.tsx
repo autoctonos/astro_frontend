@@ -180,7 +180,6 @@ export default function CheckoutShipping() {
     0
   );
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const neveras = activeQuote?.grupos.reduce((s, g) => s + g.neveras, 0) ?? 0;
 
   const disabled =
     items.length === 0 || submitting || !activeQuote || quoteLoading || !!quoteError;
@@ -657,6 +656,16 @@ export default function CheckoutShipping() {
                               <span>{formatCOP(g.sobreflete)}</span>
                             </div>
                           )}
+
+                          {esPositivo(g.empaque) && (
+                            <div className="pl-4 text-xs text-custom-black/60">
+                              <span className="flex items-center gap-1">
+                                <Snowflake className="size-3" />
+                                Empaque refrigerado ({g.neveras}{" "}
+                                {g.neveras === 1 ? "nevera" : "neveras"})
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ))}
 
@@ -664,26 +673,13 @@ export default function CheckoutShipping() {
                         <span className="text-custom-black/70">
                           Garantía del producto
                           <span className="block text-xs text-custom-black/50">
-                            Cubre el valor de tu compra durante el transporte. No aplica el
-                            envío gratis.
+                            Cubre el valor de tu compra durante el transporte.
                           </span>
                         </span>
                         <span className="shrink-0 font-medium text-custom-dark-green">
                           {formatCOP(activeQuote.totales.sobreflete)}
                         </span>
                       </div>
-
-                      {esPositivo(activeQuote.totales.empaque) && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1 text-custom-black/70">
-                            <Snowflake className="size-3" />
-                            Empaque refrigerado ({neveras} {neveras === 1 ? "nevera" : "neveras"})
-                          </span>
-                          <span className="font-medium text-custom-dark-green">
-                            {formatCOP(activeQuote.totales.empaque)}
-                          </span>
-                        </div>
-                      )}
 
                       {esPositivo(activeQuote.totales.descuento_envio) && (
                         <div className="flex items-center justify-between text-sm">
@@ -741,9 +737,6 @@ export default function CheckoutShipping() {
                     <span className="text-2xl font-bold text-custom-dark-green">
                       {activeQuote ? formatCOP(activeQuote.totales.total) : "—"}
                     </span>
-                    <p className="mt-0.5 text-[10px] text-custom-black/60">
-                      {activeQuote ? "Producto + envío" : "Falta calcular el envío"}
-                    </p>
                   </div>
                 </div>
 
