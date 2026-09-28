@@ -3,7 +3,7 @@
  *
  * Se activa con `PUBLIC_SHIPPING_MOCK=1` (fiel al golden fixture del plan) o con
  * `PUBLIC_SHIPPING_MOCK=2` (variante de demo: fuerza cadena de frío y dos orígenes,
- * para poder ver las filas de empaque y de multi-origen). Cualquier otro valor lo apaga.
+ * para poder ver las filas de neveras y de multi-origen). Cualquier otro valor lo apaga.
  *
  * Replica el tarifario y el algoritmo del plan, así que el caso Queso Paipa
  * (0,8 kg · $30.000 · ×5 · origen Paipa → Tunja) devuelve exactamente el golden:
@@ -53,7 +53,6 @@ const TARIFARIO: Tarifa[] = [
 
 const PORCENTAJE_SOBREFLETE = 0.02;
 const CAPACIDAD_NEVERA_KG = 6;
-const COSTO_NEVERA = 12000;
 const UMBRAL_PROMOCION = 200000;
 const PESO_POR_DEFECTO_KG = 0.8;
 
@@ -171,7 +170,6 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
 
   let totalFlete = 0;
   let totalSobreflete = 0;
-  let totalEmpaque = 0;
   let subtotalProductos = 0;
 
   for (const [clave, itemsOrigen] of porGrupo) {
@@ -208,11 +206,9 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
     const flete = tarifa.inicial + kilosAdicionales * tarifa.adicional;
     const sobreflete = Math.max(tarifa.minimo, subtotalGrupo * PORCENTAJE_SOBREFLETE);
     const neveras = Math.ceil(pesoFrio / CAPACIDAD_NEVERA_KG);
-    const empaque = neveras * COSTO_NEVERA;
 
     totalFlete += flete;
     totalSobreflete += sobreflete;
-    totalEmpaque += empaque;
     subtotalProductos += subtotalGrupo;
 
     grupos.push({
@@ -236,16 +232,15 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
       sobreflete: money(sobreflete),
       peso_frio_kg: kilos(pesoFrio),
       neveras,
-      empaque: money(empaque),
-      total_grupo: money(subtotalGrupo + flete + sobreflete + empaque),
+      total_grupo: money(subtotalGrupo + flete + sobreflete),
     });
   }
 
   // La promoción cubre el flete y nada más: el sobreflete es la garantía del producto y
-  // siempre se cobra; el empaque tampoco entra.
+  // siempre se cobra. El empaque refrigerado no se cobra: va incluido en el flete.
   const aplicada = subtotalProductos >= UMBRAL_PROMOCION;
   const descuento = aplicada ? totalFlete : 0;
-  const envio = totalFlete + totalSobreflete + totalEmpaque - descuento;
+  const envio = totalFlete + totalSobreflete - descuento;
 
   // El pedido está completo cuando llega el último paquete: los dos extremos son máximos.
   const entregaGlobal = {
@@ -268,7 +263,6 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
       subtotal_productos: money(subtotalProductos),
       flete: money(totalFlete),
       sobreflete: money(totalSobreflete),
-      empaque: money(totalEmpaque),
       descuento_envio: money(descuento),
       envio: money(envio),
       total: money(subtotalProductos + envio),
