@@ -657,11 +657,11 @@ export default function CheckoutShipping() {
                             </div>
                           )}
 
-                          {esPositivo(g.empaque) && (
+                          {g.neveras > 0 && (
                             <div className="pl-4 text-xs text-custom-black/60">
                               <span className="flex items-center gap-1">
                                 <Snowflake className="size-3" />
-                                Empaque refrigerado ({g.neveras}{" "}
+                                Empaque refrigerado incluido ({g.neveras}{" "}
                                 {g.neveras === 1 ? "nevera" : "neveras"})
                               </span>
                             </div>

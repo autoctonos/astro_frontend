@@ -92,7 +92,8 @@ export const GrupoEnvioSchema = z.object({
   sobreflete: Money,
   peso_frio_kg: Kilos,
   neveras: z.number().int(),
-  empaque: Money,
+  /** Obsoleto: el empaque va incluido en el flete y el backend siempre envía "0.00". */
+  empaque: Money.optional(),
   total_grupo: Money,
 });
 
@@ -115,7 +116,8 @@ export const TotalesCotizacionSchema = z.object({
   subtotal_productos: Money,
   flete: Money,
   sobreflete: Money,
-  empaque: Money,
+  /** Obsoleto: siempre "0.00", ver `GrupoEnvioSchema.empaque`. */
+  empaque: Money.optional(),
   descuento_envio: Money,
   envio: Money,
   total: Money,
