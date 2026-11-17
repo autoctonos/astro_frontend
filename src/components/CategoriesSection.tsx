@@ -1,15 +1,6 @@
 import type { Categoria } from "@/api/schemas/categories";
-import {
-  Torus,
-  Donut,
-  Milk,
-  Leaf,
-  Coffee,
-  Cookie,
-  type LucideIcon,
-} from "lucide-react";
-
-const ICONS: LucideIcon[] = [Torus, Milk, Donut, Coffee, Leaf, Cookie];
+import { CategoryIcon } from "@/lib/category-icons";
+import { categoryPath } from "@/lib/category-url";
 
 type Props = {
   categories: Categoria[];
@@ -33,9 +24,8 @@ export default function CategoriesSection({ categories }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {items.map((category, index) => {
-            const Icon = ICONS[index % ICONS.length];
-            const href = `/categories/${category.slug ?? encodeURIComponent(category.nombre)}`;
+          {items.map((category) => {
+            const href = categoryPath(category);
 
             return (
               <a
@@ -44,7 +34,7 @@ export default function CategoriesSection({ categories }: Props) {
                 className="group flex flex-col items-center gap-3 rounded-2xl border border-white/50 bg-white/50 p-4 text-center shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-custom-medium-green/50 hover:bg-white/60 hover:shadow-md"
               >
                 <div className="flex size-12 items-center justify-center rounded-xl bg-custom-light-green/20 text-custom-dark-green transition-all duration-300 group-hover:bg-custom-light-green/30 group-hover:scale-110">
-                  <Icon className="size-5" />
+                  <CategoryIcon category={category} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-custom-dark-green">

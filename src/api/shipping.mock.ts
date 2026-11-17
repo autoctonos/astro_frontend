@@ -1,16 +1,3 @@
-/**
- * Mock local de la API de envíos, para construir y ver toda la UI sin backend.
- *
- * Se activa con `PUBLIC_SHIPPING_MOCK=1` (fiel al golden fixture del plan) o con
- * `PUBLIC_SHIPPING_MOCK=2` (variante de demo: fuerza cadena de frío y dos orígenes,
- * para poder ver las filas de neveras y de multi-origen). Cualquier otro valor lo apaga.
- *
- * Replica el tarifario y el algoritmo del plan, así que el caso Queso Paipa
- * (0,8 kg · $30.000 · ×5 · origen Paipa → Tunja) devuelve exactamente el golden:
- * flete 25.100 · sobreflete 3.000 · **total "178100.00"**.
- *
- * NO es la fuente de verdad: la única fuente de verdad es el backend.
- */
 import type {
   Cotizacion,
   DestinosResponse,
@@ -30,7 +17,6 @@ export function shippingMockMode(): ShippingMockMode {
 
 export const isShippingMockEnabled = () => shippingMockMode() !== "off";
 
-/* ---------------------------- tarifario ---------------------------- */
 
 type Tarifa = {
   codigo: string;
@@ -38,7 +24,6 @@ type Tarifa = {
   inicial: number;
   adicional: number;
   minimo: number;
-  /** Días hábiles de la hoja «Convenciones» del tarifario. */
   diasMin: number;
   diasMax: number;
 };
@@ -59,7 +44,6 @@ const PESO_POR_DEFECTO_KG = 0.8;
 const tarifaPorJerarquia = (j: number) =>
   TARIFARIO.find((t) => t.jerarquia === j) ?? TARIFARIO[TARIFARIO.length - 1]!;
 
-/* ---------------------------- cobertura ---------------------------- */
 
 export const MOCK_DESTINOS: DestinosResponse = {
   version: "2026-09-03T12:00:00Z",
@@ -91,7 +75,6 @@ export const MOCK_DESTINOS: DestinosResponse = {
       municipios: [{ id_municipio: 900, nombre: "Cali", trayecto: "nacional", jerarquia: 3 }],
     },
     {
-      // Sólo en el mock: sirve para ver el estado de error 422 sin backend.
       id_departamento: 1,
       nombre: "Amazonas",
       municipios: [{ id_municipio: 3, nombre: "Leticia", trayecto: "especial", jerarquia: 5 }],
@@ -99,13 +82,11 @@ export const MOCK_DESTINOS: DestinosResponse = {
   ],
 };
 
-/** El envío se agrupa por productor: cada uno despacha desde su propio municipio. */
 const PRODUCTORES = [
   { idProductor: 7, nombre: "Lácteos El Roble", idMunicipio: 1069, municipio: "Paipa", departamento: "Boyacá", jerarquia: 2 },
   { idProductor: 9, nombre: "Sabajón del Llano", idMunicipio: 1098, municipio: "Sogamoso", departamento: "Boyacá", jerarquia: 2 },
 ];
 
-/** Error con la misma forma que el 422 del backend, para ejercitar la UI de error. */
 export class MockCotizacionError extends Error {
   readonly status = 422;
   readonly body: { code: string; detail: string; contexto: Record<string, unknown> };
@@ -117,7 +98,6 @@ export class MockCotizacionError extends Error {
   }
 }
 
-/* ---------------------------- helpers ---------------------------- */
 
 const money = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 const kilos = (n: number) => n.toFixed(3);
@@ -129,7 +109,6 @@ export type MockCartItem = CotizarItem & {
   requiresCooling?: boolean;
 };
 
-/* ---------------------------- cotización ---------------------------- */
 
 export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): Cotizacion {
   const modo = shippingMockMode();
@@ -156,8 +135,6 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
     throw new MockCotizacionError("carrito_vacio", "Tu carrito está vacío.");
   }
 
-  // Agrupa por (productor, municipio de origen), igual que el backend. En modo "demo"
-  // alterna productores para ver el multi-grupo.
   const grupos: GrupoEnvio[] = [];
   const porGrupo = new Map<string, MockCartItem[]>();
   items.forEach((it, idx) => {
@@ -219,7 +196,6 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
       departamento_origen: origen.departamento,
       trayecto_aplicado: tarifa.codigo,
       jerarquia,
-      // Los días salen de la tarifa aplicada, igual que el flete.
       entrega: { dias_min: tarifa.diasMin, dias_max: tarifa.diasMax },
       items: lineas,
       peso_bruto_kg: kilos(pesoBruto),
@@ -230,19 +206,17 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
       valor_kilo_adicional: money(tarifa.adicional),
       flete: money(flete),
       sobreflete: money(sobreflete),
+      valor_envio: money(flete + sobreflete),
       peso_frio_kg: kilos(pesoFrio),
       neveras,
       total_grupo: money(subtotalGrupo + flete + sobreflete),
     });
   }
 
-  // La promoción cubre el flete y nada más: el sobreflete es la garantía del producto y
-  // siempre se cobra. El empaque refrigerado no se cobra: va incluido en el flete.
   const aplicada = subtotalProductos >= UMBRAL_PROMOCION;
   const descuento = aplicada ? totalFlete : 0;
   const envio = totalFlete + totalSobreflete - descuento;
 
-  // El pedido está completo cuando llega el último paquete: los dos extremos son máximos.
   const entregaGlobal = {
     dias_min: Math.max(...grupos.map((g) => g.entrega.dias_min)),
     dias_max: Math.max(...grupos.map((g) => g.entrega.dias_max)),

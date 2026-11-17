@@ -13,13 +13,18 @@ export default function ProducersSection() {
 
   const [productores, setProductores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // Un error de red NO es «no hay productores»: se muestra distinto y con reintento.
+  const [error, setError] = useState(false);
+  const [intento, setIntento] = useState(0);
 
 
   const [paginaActual, setPaginaActual] = useState(1);
 
 
   useEffect(() => {
-    fetchDepartamentos().then((data: any) => setDepartamentos(data?.results || data));
+    fetchDepartamentos()
+      .then((data: any) => setDepartamentos(data?.results || data))
+      .catch(() => setDepartamentos([]));
   }, []);
 
   useEffect(() => {
@@ -40,14 +45,19 @@ export default function ProducersSection() {
 
   useEffect(() => {
     setLoading(true);
+    setError(false);
     fetchProductoresConImagenes(depSeleccionado, muniSeleccionado)
       .then((data: any) => {
         const datosReales = data?.results || data;
-        setProductores(datosReales);
+        setProductores(Array.isArray(datosReales) ? datosReales : []);
       })
-      .catch((err) => console.error("Error al cargar:", err))
+      .catch((err) => {
+        console.error("Error al cargar productores:", err);
+        setProductores([]);
+        setError(true);
+      })
       .finally(() => setLoading(false));
-  }, [depSeleccionado, muniSeleccionado]);
+  }, [depSeleccionado, muniSeleccionado, intento]);
 
   const indiceUltimoProductor = paginaActual * PRODUCTOS_POR_PAGINA;
   const indicePrimerProductor = indiceUltimoProductor - PRODUCTOS_POR_PAGINA;
@@ -55,20 +65,20 @@ export default function ProducersSection() {
   const totalPaginas = Math.ceil(productores.length / PRODUCTOS_POR_PAGINA);
 
   return (
-    <section className="py-24 px-4 md:px-8 w-full font-sans">
+    <section className="pt-8 pb-16 md:pt-10 md:pb-20 px-4 md:px-8 w-full font-sans">
       <div className="max-w-7xl mx-auto">
 
-        <div className="text-center mb-16 space-y-4">
+        <div className="text-center mb-6 md:mb-8">
           <span className="text-[#D48D66] text-xs font-bold tracking-[0.2em] uppercase block">
             Quienes nos respaldan
           </span>
-          <h2 className="text-5xl md:text-6xl text-gray-900 font-serif font-bold tracking-tight mt-2">
+          <h1 className="text-3xl md:text-4xl text-gray-900 font-serif font-bold tracking-tight mt-2">
             Nuestros Productores
-          </h2>
-          <div className="w-12 h-1 bg-[#E8C4A8] mx-auto rounded-full my-8"></div>
+          </h1>
+          <div className="w-12 h-1 bg-[#E8C4A8] mx-auto rounded-full mt-4"></div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-center gap-4 mb-16 max-w-2xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-center gap-3 mb-8 md:mb-10 max-w-2xl mx-auto">
           <div className="relative w-full md:w-1/2">
             <select
               value={depSeleccionado}
@@ -108,17 +118,28 @@ export default function ProducersSection() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-500">Cargando productores...</div>
+          <div className="text-center py-12 text-gray-500">Cargando productores...</div>
+        ) : error ? (
+          <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50/70 px-6 py-8 text-center">
+            <p className="text-sm text-red-700">No pudimos cargar los productores. Revisa tu conexión e inténtalo de nuevo.</p>
+            <button
+              type="button"
+              onClick={() => setIntento((n) => n + 1)}
+              className="rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {productoresPaginados.length > 0 ? (
                 productoresPaginados.map((item: any) => (
                   <article
                     key={item.id_productor}
-                    className="group bg-white/60 backdrop-blur-md rounded-2xl p-8 text-center border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 transition-all duration-300 ease-in-out cursor-default"
+                    className="group bg-white/60 backdrop-blur-md rounded-2xl p-6 text-center border border-white/50 shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] hover:shadow-xl hover:bg-white/80 hover:-translate-y-2 transition-all duration-300 ease-in-out cursor-default"
                   >
-                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-[#FFFCF8] transition-colors relative overflow-hidden">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-[#FFFCF8] transition-colors relative overflow-hidden">
                       {item.imagen ? (
                         <img
                           src={item.imagen}
@@ -132,12 +153,12 @@ export default function ProducersSection() {
                       )}
                     </div>
 
-                    <h3 className="text-xl font-serif font-bold text-gray-900 mb-3">
+                    <h3 className="text-lg font-serif font-bold text-gray-900 mb-2">
                       {item.nombre}
                     </h3>
 
                     {item.ubicacion && (
-                      <p className="text-[#D48D66] text-xs font-semibold uppercase tracking-wider mb-3">
+                      <p className="text-[#D48D66] text-xs font-semibold uppercase tracking-wider mb-2">
                         📍 {item.ubicacion}
                       </p>
                     )}
@@ -156,7 +177,7 @@ export default function ProducersSection() {
 
             {/* 👇 Controles de Paginación */}
             {totalPaginas > 1 && (
-              <div className="flex justify-center items-center mt-16 space-x-4">
+              <div className="flex justify-center items-center mt-10 space-x-4">
                 <button
                   onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
                   disabled={paginaActual === 1}

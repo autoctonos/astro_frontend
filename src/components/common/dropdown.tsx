@@ -1,12 +1,10 @@
-import type React from "react";
 import { useEffect, useState } from "react";
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
-import { Torus, Donut, Milk, Leaf, Coffee, Cookie, type LucideIcon } from "lucide-react";
 import { fetchCategorias } from "@/api/categories";
 import type { Categoria } from "@/api/schemas/categories";
+import { CategoryIcon } from "@/lib/category-icons";
+import { categoryPath, categorySlug } from "@/lib/category-url";
 import clsx from "clsx";
-
-const ICONS: LucideIcon[] = [Torus, Milk, Donut, Coffee, Leaf, Cookie];
 
 export default function Drop({ title }: { title: string }) {
   const [data, setData] = useState<Categoria[]>([]);
@@ -58,9 +56,6 @@ export default function Drop({ title }: { title: string }) {
           base: "rounded-lg px-4 py-2 data-[hover=true]:bg-custom-cream/80",
           title: "text-sm font-medium",
         }}
-        onAction={(key: React.Key) => {
-          if (key && !String(key).startsWith("_")) window.location.href = `/categories/${String(key)}`;
-        }}
       >
         {loading ? (
           <DropdownItem key="_loading" isDisabled className="text-white/90">
@@ -75,16 +70,16 @@ export default function Drop({ title }: { title: string }) {
             No hay categorías
           </DropdownItem>
         ) : (
-          data.map((item, index) => {
-            const key = String(item.id ?? item.nombre);
-            const Icon = ICONS[index % ICONS.length];
+          data.map((item) => {
+            const key = categorySlug(item);
             return (
               <DropdownItem
                 key={key}
                 id={key}
+                href={categoryPath(item)}
                 startContent={
                   <span className="flex size-6 items-center justify-center rounded-lg bg-custom-light-green/20 text-custom-cream">
-                    <Icon className="size-3" />
+                    <CategoryIcon category={item} className="size-3.5" />
                   </span>
                 }
                 className="transition-colors duration-200 hover:bg-custom-medium-green/20 hover:text-custom-dark-green"

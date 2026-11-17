@@ -1,12 +1,6 @@
 import type { Producto } from "@/api/schemas/products";
 import PriceDisplay from "@/components/PriceDisplay";
-
-function normalizeImage(url?: string | null) {
-  if (!url) return "/placeholder.png";
-  if (url.startsWith("http")) return url;
-  const base = import.meta.env.PUBLIC_API_BASE ?? "";
-  return `${base}${url}`;
-}
+import ProductPhoto from "@/components/ProductPhoto";
 
 export default function SearchResults({
   items,
@@ -22,7 +16,6 @@ export default function SearchResults({
   return (
     <>
       {items.map((p) => {
-        const img = normalizeImage(p.imagenes?.[0]?.url_imagen);
         const outOfStock = p.stock === 0;
         return (
           <li key={p.id_producto} role="option" className={outOfStock ? "opacity-60" : ""}>
@@ -31,13 +24,13 @@ export default function SearchResults({
               className="flex w-full items-center gap-3 p-2 text-sm transition-colors hover:bg-custom-light-green/10 focus:outline-none"
               onClick={onItemClick}
             >
-              <img
-                src={img}
-                alt={p.nombre}
-                width={44}
-                height={44}
-                className="h-11 w-11 flex-shrink-0 rounded-lg border border-white/20 object-cover"
-                loading="lazy"
+              <ProductPhoto
+                fit="cover"
+                src={p.imagenes?.[0]?.url_imagen}
+                alt=""
+                sizes="44px"
+                maxWidth={96}
+                className="size-11 shrink-0 rounded-lg"
               />
               <div className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-white">{p.nombre}</span>

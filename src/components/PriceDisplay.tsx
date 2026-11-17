@@ -32,7 +32,7 @@ export default function PriceDisplay({
         ? "text-2xl font-semibold text-custom-dark-green"
         : theme === "dark"
         ? "text-xs text-white/90"
-        : "text-sm text-gray-600";
+        : "text-base font-bold tabular-nums text-custom-dark-green";
     return <span className={plainClass}>{formatCOP(effectivePrice)}</span>;
   }
 
@@ -41,7 +41,7 @@ export default function PriceDisplay({
       ? "text-2xl font-bold text-custom-dark-green"
       : theme === "dark"
       ? "text-xs font-semibold text-white"
-      : "text-sm font-bold text-custom-dark-green";
+      : "text-base font-bold tabular-nums text-custom-dark-green";
 
   const originalClass =
     size === "lg"

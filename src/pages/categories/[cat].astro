@@ -5,15 +5,48 @@ import Layout from "@/layouts/Layout.astro";
 import Navbar from "@/components/navigation/navbar";
 import CategoryClient from "@/components/CategoryClient";
 import CategorySidebar from "@/components/categories/CategorySidebar";
+import { fetchCategorias } from "@/api/categories";
+import { categoryPath, categorySlug, resolveCategory } from "@/lib/category-url";
 
-const { cat } = Astro.params; 
+const segmento = String(Astro.params.cat ?? "");
+
+// La URL canónica es /categories/<slug> en minúsculas con guiones. Las direcciones viejas
+// (/categories/BEBIDAS, /categories/CAF%C3%89, /categories/3) redirigen con 301 para no
+// romper enlaces compartidos ni el SEO.
+let categorias: Awaited<ReturnType<typeof fetchCategorias>> | null = null;
+try {
+  categorias = await fetchCategorias();
+} catch {
+  categorias = null; // Backend caído: se intenta igual con el segmento tal cual.
+}
+
+const resuelta = categorias ? resolveCategory(categorias, segmento) : null;
+if (resuelta && !resuelta.canonical) {
+  return Astro.redirect(categoryPath(resuelta.categoria), 301);
+}
+
+const noExiste = categorias !== null && !resuelta;
+if (noExiste) Astro.response.status = 404;
+
+const categoria = resuelta?.categoria;
+const slugActual = categoria ? categorySlug(categoria) : segmento;
+const titulo = categoria ? `${categoria.nombre} | Autóctonos` : "Categoría | Autóctonos";
 ---
-<Layout title="Categoría">
-  <Navbar client:idle />
+<Layout title={titulo}>
+  <Navbar client:idle hideCategories />
   <div class="mx-auto max-w-6xl px-4 py-6 grid grid-cols-1 gap-6 lg:grid-cols-[16rem_1fr]">
-    <CategorySidebar client:load currentCat={String(cat)} />
+    <CategorySidebar client:load currentSlug={slugActual} />
     <div>
-      <CategoryClient client:load cat={String(cat)} />
+      {noExiste ? (
+        <div class="rounded-2xl border border-custom-dark-green/10 bg-white/60 p-6">
+          <h1 class="text-lg font-semibold text-custom-dark-green">Esta categoría no existe</h1>
+          <p class="mt-1 text-sm text-custom-black/70">
+            Puede que haya cambiado de nombre. Elige una de la lista.
+          </p>
+        </div>
+      ) : (
+        <CategoryClient client:load cat={categoria?.id_categoria ?? slugActual} />
+      )}
     </div>
   </div>
 </Layout>

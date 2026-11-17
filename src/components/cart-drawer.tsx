@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ProductPhoto from "@/components/ProductPhoto";
 import { Button } from "@heroui/react";
 import {
   Minus,
@@ -16,7 +17,6 @@ import {
   removeFromCart,
   formatCOP,
 } from "@/stores/cart";
-import { asset } from "@/lib/assets";
 
 // Umbral del envío gratis, sólo para la barra de progreso. El costo real del envío lo
 // calcula el backend en el checkout: depende del destino, del peso y de cuántos
@@ -175,19 +175,14 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                   >
                     <div className="absolute inset-0 rounded-2xl border border-white/60 bg-white/50 backdrop-blur-xl group-hover:bg-white/65" />
                     <div className="relative flex gap-3 p-3">
-                      <div className="relative size-20 shrink-0 overflow-hidden rounded-xl shadow-sm">
-                        {it.image ? (
-                          <img
-                            src={asset(it.image)}
-                            alt={it.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-custom-cream/80 text-xs text-custom-dark-green/50">
-                            Sin imagen
-                          </div>
-                        )}
-                      </div>
+                      <ProductPhoto
+                        fit="cover"
+                        src={it.image}
+                        alt=""
+                        sizes="80px"
+                        maxWidth={160}
+                        className="size-20 shrink-0 rounded-xl"
+                      />
                       <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
                         <div>
                           <h4 className="line-clamp-2 text-sm font-semibold leading-tight text-custom-dark-green">
