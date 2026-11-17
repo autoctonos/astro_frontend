@@ -12,7 +12,7 @@ import { openCart, useCartCount } from "@/stores/cart";
 
 type NavItem = { href: string; label: string };
 
-export default function Navbar() {
+export default function Navbar({ hideCategories = false }: { hideCategories?: boolean }) {
   const [query, setQuery] = useState("");
   const [openList, setOpenList] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -79,11 +79,14 @@ export default function Navbar() {
             </NavbarItem>
           ))}
         </ul>
-        <NavbarItem>
-          <ul className="hidden lg:flex items-center justify-center bg-custom-dark-green rounded-lg ">
-            <Drop title="Categorías" />
-          </ul>
-        </NavbarItem>
+        {/* En /categories/* la barra lateral ya lista las categorías: el botón sobraría. */}
+        {!hideCategories && (
+          <NavbarItem>
+            <ul className="hidden lg:flex items-center justify-center bg-custom-dark-green rounded-lg ">
+              <Drop title="Categorías" />
+            </ul>
+          </NavbarItem>
+        )}
         <NavbarItem className="hidden lg:flex flex-1 max-w-2xl mx-4">
           <div
             ref={boxRef}
@@ -209,12 +212,14 @@ export default function Navbar() {
           />
         </div>
       </div>
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-custom-medium-green uppercase tracking-wider mb-3">
-          Categorías
-        </h3>
-        <Drop title="Explorar categorías" />
-      </div>
+      {!hideCategories && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-custom-medium-green uppercase tracking-wider mb-3">
+            Categorías
+          </h3>
+          <Drop title="Explorar categorías" />
+        </div>
+      )}
       <div className="mt-6">
         <button
           onClick={() => {
