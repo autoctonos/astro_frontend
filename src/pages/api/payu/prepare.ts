@@ -2,6 +2,14 @@ import type { APIRoute } from "astro";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { CotizacionSchema, parseCotizacionError } from "@/api/schemas/shipping";
+import {
+  BuyerSchema,
+  NOTES_MAX,
+  normalizeAddress,
+  normalizeZip,
+  validateAddress,
+  validateZip,
+} from "@/lib/validation/checkout";
 
 // `PUBLIC_API_BASE` la inyecta Vite en build; el fallback a `process.env` cubre el caso
 // de que sólo esté definida en el runtime server-side (sin depender de @types/node).
@@ -21,22 +29,25 @@ const COTIZAR_TIMEOUT_MS = 12000;
  * El monto lo decide exclusivamente la cotización server-to-server.
  */
 const BodySchema = z.object({
-  buyer: z.object({
-    fullName: z.string().default(""),
-    email: z.string().default(""),
-    phone: z.string().default(""),
-    docType: z.string().default(""),
-    docNumber: z.string().default(""),
-  }),
-  shipping: z.object({
-    country: z.string().default("CO"),
-    stateId: z.number().int().optional().nullable(),
-    state: z.string().default(""),
-    cityId: z.coerce.number().int().positive(),
-    city: z.string().default(""),
-    address: z.string().default(""),
-    zip: z.string().optional().nullable(),
-  }),
+  /** Mismas reglas que el formulario (`lib/validation/checkout.ts`); sale normalizado. */
+  buyer: BuyerSchema,
+  shipping: z
+    .object({
+      country: z.string().default("CO"),
+      stateId: z.number().int().optional().nullable(),
+      state: z.string().default(""),
+      cityId: z.coerce.number().int().positive(),
+      city: z.string().default(""),
+      address: z.string().default(""),
+      zip: z.string().optional().nullable(),
+    })
+    .superRefine((s, ctx) => {
+      const address = validateAddress(s.address);
+      if (address) ctx.addIssue({ code: "custom", path: ["address"], message: address });
+      const zip = validateZip(s.zip);
+      if (zip) ctx.addIssue({ code: "custom", path: ["zip"], message: zip });
+    })
+    .transform((s) => ({ ...s, address: normalizeAddress(s.address), zip: normalizeZip(s.zip) })),
   items: z
     .array(
       z.object({
@@ -45,7 +56,7 @@ const BodySchema = z.object({
       })
     )
     .min(1),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(NOTES_MAX).optional().nullable(),
   /**
    * Total que el cliente creía que iba a pagar. **Sólo se usa para comparar** y avisarle
    * si cambió; jamás para calcular ni firmar el monto.
@@ -87,15 +98,14 @@ export const POST: APIRoute = async ({ request }) => {
 
   const parsed = BodySchema.safeParse(raw);
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    return json(
-      {
-        error: issue
-          ? `Datos incompletos: ${issue.path.join(".") || "payload"} — ${issue.message}`
-          : "Datos incompletos.",
-      },
-      400
-    );
+    // `fields` usa las mismas claves que el formulario (fullName, phone, address…) para
+    // que el navegador pueda marcar cada campo si su validación quedó desactualizada.
+    const fields: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[issue.path.length - 1] ?? "payload");
+      fields[key] ??= issue.message;
+    }
+    return json({ error: "Revisa los datos marcados en el formulario.", fields }, 400);
   }
 
   const {

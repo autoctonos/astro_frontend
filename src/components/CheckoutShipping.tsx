@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
+import ProductPhoto from "@/components/ProductPhoto";
 import {
   User,
   MapPin,
   CreditCard,
   ChevronRight,
   Mail,
-  Phone,
   FileText,
   StickyNote,
   Truck,
@@ -20,9 +19,23 @@ import {
   RefreshCw,
   Info,
   Clock,
+  Check,
+  Smartphone,
 } from "lucide-react";
+import {
+  DOC_RULES,
+  DOC_TYPES,
+  formatPhone,
+  normalizeDocNumber,
+  normalizePhone,
+  suggestEmail,
+  validateAddress,
+  validateBuyerField,
+  validateZip,
+  type BuyerField,
+  type DocType,
+} from "@/lib/validation/checkout";
 import { useCartStore, formatCOP, syncCartPricing } from "@/stores/cart";
-import { asset } from "@/lib/assets";
 import { useShippingDestinos, useShippingQuote } from "@/hooks/useShippingQuote";
 import type { ShippingQuoteError } from "@/hooks/useShippingQuote";
 import {
@@ -51,23 +64,41 @@ type Shipping = {
   zip?: string;
 };
 
-const checkoutSchema = z.object({
-  fullName: z.string().min(1, "El nombre es requerido"),
-  email: z.string().min(1, "El email es requerido").email("Email inválido"),
-  phone: z.string().min(5, "El teléfono es requerido"),
-  docType: z.string().min(1, "Selecciona un tipo de documento"),
-  docNumber: z.string().min(1, "El número de documento es requerido"),
-  state: z.string().min(1, "Selecciona un departamento"),
-  cityId: z.number().int().positive("Selecciona un municipio"),
-  address: z.string().min(1, "La dirección es requerida"),
-});
+type FieldKey = BuyerField | "state" | "cityId" | "address" | "zip";
 
-const DOC_TYPES = [
-  { value: "CC", label: "Cédula de Ciudadanía" },
-  { value: "CE", label: "Cédula de Extranjería" },
-  { value: "NIT", label: "NIT" },
-  { value: "Passport", label: "Pasaporte" },
+/** Orden visual: el primero inválido de esta lista es el que recibe el foco al enviar. */
+const FIELD_ORDER: FieldKey[] = [
+  "fullName",
+  "docType",
+  "docNumber",
+  "email",
+  "phone",
+  "state",
+  "cityId",
+  "address",
+  "zip",
 ];
+
+const fieldId = (field: FieldKey) => `checkout-${field}`;
+
+function fieldError(field: FieldKey, buyer: Buyer, shipping: Shipping): string | null {
+  switch (field) {
+    case "state":
+      return shipping.stateId ? null : "Selecciona un departamento";
+    case "cityId":
+      return shipping.cityId ? null : "Selecciona un municipio";
+    case "address":
+      return validateAddress(shipping.address);
+    case "zip":
+      return validateZip(shipping.zip);
+    default:
+      return validateBuyerField(field, buyer);
+  }
+}
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 const CODIGOS_CON_PRODUCTO = new Set([
   "producto_sin_peso",
@@ -97,7 +128,9 @@ export default function CheckoutShipping() {
   });
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+  const [formAlert, setFormAlert] = useState<string | null>(null);
 
   /* ------------------------------ destinos ------------------------------ */
 
@@ -136,6 +169,12 @@ export default function CheckoutShipping() {
   }, [quote]);
 
   const activeQuote = serverQuote ?? quote;
+  // El sobreflete nunca se muestra aparte: cada guía es un solo «Valor envío»
+  // (flete + sobreflete, ya sumado en el backend). Con una sola guía y sin descuento,
+  // esa fila ES el total del envío y no se repite.
+  const variosEnvios = (activeQuote?.grupos.length ?? 0) > 1;
+  const hayDescuentoEnvio = !!activeQuote && esPositivo(activeQuote.totales.descuento_envio);
+  const desgloseEnvio = variosEnvios || hayDescuentoEnvio;
 
   const [priceNotice, setPriceNotice] = useState(false);
   const itemsRef = useRef(items);
@@ -184,22 +223,59 @@ export default function CheckoutShipping() {
   const disabled =
     items.length === 0 || submitting || !activeQuote || quoteLoading || !!quoteError;
 
+  /** Lleva al comprador al primer campo con error, en el orden en que se ve el formulario. */
+  function focusFirstInvalid(found: Partial<Record<FieldKey, string>>) {
+    const first = FIELD_ORDER.find((f) => found[f]);
+    if (!first) return;
+    const el = document.getElementById(fieldId(first));
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    el.focus({ preventScroll: true });
+  }
+
+  function showFieldErrors(found: Partial<Record<FieldKey, string>>) {
+    const count = Object.values(found).filter(Boolean).length;
+    setErrors(found);
+    setTouched(Object.fromEntries(FIELD_ORDER.map((f) => [f, true])));
+    setFormAlert(
+      count === 1
+        ? "Revisa el campo marcado para continuar."
+        : `Revisa los ${count} campos marcados para continuar.`
+    );
+    focusFirstInvalid(found);
+  }
+
   function validate() {
-    const result = checkoutSchema.safeParse({
-      ...buyer,
-      ...shipping,
-      cityId: shipping.cityId ?? 0,
-    });
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setErrors(
-        Object.fromEntries(Object.entries(fieldErrors).map(([k, v]) => [k, v?.[0] ?? ""]))
-      );
+    const found: Partial<Record<FieldKey, string>> = {};
+    for (const f of FIELD_ORDER) {
+      const msg = fieldError(f, buyer, shipping);
+      if (msg) found[f] = msg;
+    }
+    if (Object.keys(found).length) {
+      showFieldErrors(found);
       return false;
     }
     setErrors({});
+    setFormAlert(null);
     return true;
   }
+
+  /** Se valida al salir del campo; mientras haya error visible, se revalida al escribir. */
+  function touch(field: FieldKey) {
+    setTouched((t) => ({ ...t, [field]: true }));
+    setErrors((e) => ({ ...e, [field]: fieldError(field, buyer, shipping) ?? "" }));
+  }
+
+  function revalidate(field: FieldKey, nextBuyer: Buyer, nextShipping: Shipping) {
+    if (!touched[field] && !errors[field]) return;
+    const msg = fieldError(field, nextBuyer, nextShipping) ?? "";
+    setErrors((e) => ({ ...e, [field]: msg }));
+  }
+
+  // Si todo quedó corregido, el aviso general sobra.
+  useEffect(() => {
+    if (formAlert && !Object.values(errors).some(Boolean)) setFormAlert(null);
+  }, [errors, formAlert]);
 
   function describeQuoteError(err: ShippingQuoteError) {
     const idProducto = err.contexto?.id_producto;
@@ -235,7 +311,16 @@ export default function CheckoutShipping() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (res.status === 400 && data?.fields && typeof data.fields === "object") {
+        const found: Partial<Record<FieldKey, string>> = {};
+        for (const f of FIELD_ORDER) if (data.fields[f]) found[f] = String(data.fields[f]);
+        if (Object.keys(found).length) {
+          showFieldErrors(found);
+          setSubmitting(false);
+          return;
+        }
+      }
       if (!res.ok) throw new Error(data?.error || "No se pudo preparar el pago.");
 
       if (data?.repriced && !confirmar) {
@@ -268,19 +353,37 @@ export default function CheckoutShipping() {
       document.body.appendChild(form);
       form.submit();
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Error inesperado.");
+      setFormAlert(
+        (e as Error)?.message ||
+          "No pudimos conectar con la pasarela de pago. Revisa tu conexión e intenta de nuevo."
+      );
       setSubmitting(false);
     }
   }
 
-  const handleBuyer = (field: keyof Buyer, value: string) => {
-    setBuyer((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
+  const handleBuyer = (field: BuyerField, raw: string) => {
+    let value = raw;
+    if (field === "phone") value = normalizePhone(raw);
+    if (field === "docNumber") value = normalizeDocNumber(buyer.docType, raw);
+    const next = { ...buyer, [field]: value };
+    // Al cambiar el tipo, el número se limpia con las reglas del nuevo tipo
+    // (p. ej. de pasaporte alfanumérico a cédula sólo dígitos).
+    if (field === "docType") next.docNumber = normalizeDocNumber(value, buyer.docNumber);
+    setBuyer(next);
+    revalidate(field, next, shipping);
+    if (field === "docType") revalidate("docNumber", next, shipping);
   };
-  const handleShipping = (field: "address" | "zip" | "country", value: string) => {
-    setShipping((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
+  const handleShipping = (field: "address" | "zip" | "country", raw: string) => {
+    const value = field === "zip" ? raw.replace(/\D/g, "").slice(0, 6) : raw;
+    const next = { ...shipping, [field]: value };
+    setShipping(next);
+    if (field !== "country") revalidate(field, buyer, next);
   };
+
+  const docRule = DOC_RULES[buyer.docType as DocType] ?? DOC_RULES.CC;
+  const emailSuggestion = touched.email && !errors.email ? suggestEmail(buyer.email) : null;
+  const isValid = (field: FieldKey) =>
+    !!touched[field] && !errors[field] && !fieldError(field, buyer, shipping);
   const handleDepartamento = (value: string) => {
     const id = Number(value);
     const dep = departamentos.find((d) => d.id_departamento === id);
@@ -291,7 +394,8 @@ export default function CheckoutShipping() {
       cityId: null,
       city: "",
     }));
-    setErrors((prev) => ({ ...prev, state: "", cityId: "" }));
+    setTouched((t) => ({ ...t, state: true }));
+    setErrors((prev) => ({ ...prev, state: dep ? "" : "Selecciona un departamento", cityId: "" }));
   };
   const handleMunicipio = (value: string) => {
     const id = Number(value);
@@ -301,7 +405,8 @@ export default function CheckoutShipping() {
       cityId: muni ? muni.id_municipio : null,
       city: muni ? muni.nombre : "",
     }));
-    setErrors((prev) => ({ ...prev, cityId: "" }));
+    setTouched((t) => ({ ...t, cityId: true }));
+    setErrors((prev) => ({ ...prev, cityId: muni ? "" : "Selecciona un municipio" }));
   };
 
   return (
@@ -329,49 +434,97 @@ export default function CheckoutShipping() {
                     Información del comprador
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
                   <InputField
+                    id={fieldId("fullName")}
                     icon={<User className="size-4" />}
                     label="Nombre completo"
                     value={buyer.fullName}
                     onChange={(v) => handleBuyer("fullName", v)}
-                    placeholder="Tu nombre completo"
+                    onBlur={() => touch("fullName")}
+                    placeholder="Nombre y apellido"
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    maxLength={80}
                     error={errors.fullName}
+                    valid={isValid("fullName")}
+                    className="sm:col-span-2"
                   />
                   <SelectField
+                    id={fieldId("docType")}
                     icon={<FileText className="size-4" />}
                     label="Tipo de documento"
                     value={buyer.docType}
                     onChange={(v) => handleBuyer("docType", v)}
-                    options={DOC_TYPES}
+                    onBlur={() => touch("docType")}
+                    options={[...DOC_TYPES]}
                     placeholder="Seleccionar"
                     error={errors.docType}
                   />
                   <InputField
+                    id={fieldId("docNumber")}
                     icon={<FileText className="size-4" />}
-                    label="N. documento"
+                    label="Número de documento"
                     value={buyer.docNumber}
                     onChange={(v) => handleBuyer("docNumber", v)}
-                    placeholder="123456789"
+                    onBlur={() => touch("docNumber")}
+                    placeholder={docRule.placeholder}
+                    inputMode={docRule.inputMode}
+                    autoCapitalize={buyer.docType === "PP" ? "characters" : "off"}
+                    autoComplete="off"
+                    hint={buyer.docType ? docRule.hint : "Elige primero el tipo de documento"}
                     error={errors.docNumber}
+                    valid={isValid("docNumber")}
                   />
                   <InputField
+                    id={fieldId("email")}
                     icon={<Mail className="size-4" />}
-                    label="Email"
+                    label="Correo electrónico"
                     type="email"
                     value={buyer.email}
                     onChange={(v) => handleBuyer("email", v)}
-                    placeholder="tu.email@ejemplo.com"
+                    onBlur={() => touch("email")}
+                    placeholder="nombre@gmail.com"
+                    autoComplete="email"
+                    inputMode="email"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    maxLength={254}
+                    hint="Aquí te enviamos la confirmación del pedido"
                     error={errors.email}
-                  />
+                    valid={isValid("email") && !emailSuggestion}
+                  >
+                    {emailSuggestion && (
+                      <p className="mt-1.5 text-xs text-custom-black/75">
+                        ¿Quisiste decir{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleBuyer("email", emailSuggestion);
+                            document.getElementById(fieldId("email"))?.focus();
+                          }}
+                          className="rounded font-semibold text-custom-dark-green underline decoration-custom-dark-green/40 underline-offset-2 hover:decoration-custom-dark-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-custom-medium-green"
+                        >
+                          {emailSuggestion}
+                        </button>
+                        ?
+                      </p>
+                    )}
+                  </InputField>
                   <InputField
-                    icon={<Phone className="size-4" />}
-                    label="Teléfono"
-                    value={buyer.phone}
+                    id={fieldId("phone")}
+                    icon={<Smartphone className="size-4" />}
+                    label="Número de celular"
+                    type="tel"
+                    value={formatPhone(buyer.phone)}
                     onChange={(v) => handleBuyer("phone", v)}
-                    placeholder="+57 300 000 0000"
-                    className="sm:col-span-1"
+                    onBlur={() => touch("phone")}
+                    placeholder="300 123 4567"
+                    prefix="+57"
+                    autoComplete="tel-national"
+                    inputMode="numeric"
                     error={errors.phone}
+                    valid={isValid("phone")}
                   />
                 </div>
               </div>
@@ -397,8 +550,9 @@ export default function CheckoutShipping() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
                   <SelectField
+                    id="checkout-country"
                     icon={<MapPin className="size-4" />}
                     label="País"
                     value={shipping.country}
@@ -406,6 +560,8 @@ export default function CheckoutShipping() {
                     options={[{ value: "CO", label: "Colombia" }]}
                   />
                   <SelectField
+                    id={fieldId("state")}
+                    onBlur={() => touch("state")}
                     icon={<MapPin className="size-4" />}
                     label="Departamento"
                     value={shipping.stateId ? String(shipping.stateId) : ""}
@@ -419,6 +575,8 @@ export default function CheckoutShipping() {
                     error={errors.state}
                   />
                   <SelectField
+                    id={fieldId("cityId")}
+                    onBlur={() => shipping.stateId && touch("cityId")}
                     icon={<MapPin className="size-4" />}
                     label="Municipio"
                     value={shipping.cityId ? String(shipping.cityId) : ""}
@@ -433,20 +591,30 @@ export default function CheckoutShipping() {
                     hint="Sólo mostramos los municipios con cobertura de envío."
                   />
                   <InputField
+                    id={fieldId("address")}
                     icon={<MapPin className="size-4" />}
                     label="Dirección"
                     value={shipping.address}
                     onChange={(v) => handleShipping("address", v)}
-                    placeholder="Calle, carrera, número"
+                    onBlur={() => touch("address")}
+                    placeholder="Calle 10 # 5-23, apto 301"
+                    autoComplete="street-address"
+                    maxLength={120}
                     error={errors.address}
+                    valid={isValid("address")}
                   />
                   <InputField
+                    id={fieldId("zip")}
                     icon={<MapPin className="size-4" />}
-                    label="Código postal"
+                    label="Código postal (opcional)"
                     value={shipping.zip ?? ""}
                     onChange={(v) => handleShipping("zip", v)}
+                    onBlur={() => touch("zip")}
                     placeholder="110111"
-                    className="sm:col-span-1"
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    error={errors.zip}
                   />
                 </div>
                 <div className="mt-5">
@@ -508,22 +676,14 @@ export default function CheckoutShipping() {
                     <div key={it.id} className="group relative overflow-hidden rounded-xl">
                       <div className="absolute inset-0 rounded-xl border border-white/45 bg-white/40 backdrop-blur-xl" />
                       <div className="relative flex items-center gap-3 p-3">
-                        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg shadow-sm">
-                          {it.image ? (
-                            <img
-                              src={asset(it.image)}
-                              alt={it.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-custom-cream/80 text-xs text-custom-dark-green/50">
-                              —
-                            </div>
-                          )}
-                          <div className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-custom-dark-green text-[10px] font-bold text-white shadow-sm">
-                            {it.quantity}
-                          </div>
-                        </div>
+                        <ProductPhoto
+                          fit="cover"
+                          src={it.image}
+                          alt=""
+                          sizes="56px"
+                          maxWidth={160}
+                          className="size-14 shrink-0 rounded-lg"
+                        />
                         <div className="min-w-0 flex-1">
                           <h4 className="truncate text-sm font-semibold text-custom-dark-green">
                             {it.name}
@@ -619,7 +779,7 @@ export default function CheckoutShipping() {
 
                   {!quoteLoading && !quoteError && activeQuote && (
                     <>
-                      {activeQuote.grupos.length > 1 && (
+                      {variosEnvios && (
                         <p className="text-xs text-custom-black/60">
                           Tu pedido viaja en {activeQuote.grupos.length} envíos, uno por cada
                           productor.
@@ -633,11 +793,12 @@ export default function CheckoutShipping() {
                         >
                           <div className="flex items-start justify-between gap-3 text-sm">
                             <span className="flex items-start gap-1 text-custom-black/70">
-                              <Truck className="mt-0.5 size-3 shrink-0" />
+                              <Truck className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
                               <span>
-                                Envío de {g.productor}
+                                {desgloseEnvio ? `Envío de ${g.productor}` : "Valor envío"}
                                 <span className="block text-xs text-custom-black/50">
-                                  desde {g.municipio_origen} · {g.peso_facturable_kg} kg ·{" "}
+                                  {!desgloseEnvio && `${g.productor} · `}desde{" "}
+                                  {g.municipio_origen} · {g.peso_facturable_kg} kg ·{" "}
                                   {trayectoLabel(g.trayecto_aplicado)}
                                 </span>
                                 <span className="block text-xs text-custom-black/50">
@@ -645,22 +806,19 @@ export default function CheckoutShipping() {
                                 </span>
                               </span>
                             </span>
-                            <span className="shrink-0 font-medium text-custom-dark-green">
-                              {formatCOP(g.flete)}
+                            <span
+                              className={`shrink-0 text-custom-dark-green ${
+                                desgloseEnvio ? "font-medium" : "font-bold"
+                              }`}
+                            >
+                              {formatCOP(g.valor_envio)}
                             </span>
                           </div>
-
-                          {activeQuote.grupos.length > 1 && (
-                            <div className="flex items-center justify-between pl-4 text-xs text-custom-black/60">
-                              <span>Garantía del producto</span>
-                              <span>{formatCOP(g.sobreflete)}</span>
-                            </div>
-                          )}
 
                           {g.neveras > 0 && (
                             <div className="pl-4 text-xs text-custom-black/60">
                               <span className="flex items-center gap-1">
-                                <Snowflake className="size-3" />
+                                <Snowflake className="size-3" aria-hidden="true" />
                                 Empaque refrigerado incluido ({g.neveras}{" "}
                                 {g.neveras === 1 ? "nevera" : "neveras"})
                               </span>
@@ -669,22 +827,10 @@ export default function CheckoutShipping() {
                         </div>
                       ))}
 
-                      <div className="flex items-start justify-between gap-3 text-sm">
-                        <span className="text-custom-black/70">
-                          Garantía del producto
-                          <span className="block text-xs text-custom-black/50">
-                            Cubre el valor de tu compra durante el transporte.
-                          </span>
-                        </span>
-                        <span className="shrink-0 font-medium text-custom-dark-green">
-                          {formatCOP(activeQuote.totales.sobreflete)}
-                        </span>
-                      </div>
-
-                      {esPositivo(activeQuote.totales.descuento_envio) && (
+                      {hayDescuentoEnvio && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1 text-custom-medium-green">
-                            <Tag className="size-3" />
+                            <Tag className="size-3" aria-hidden="true" />
                             Descuento de envío
                           </span>
                           <span className="font-medium text-custom-medium-green">
@@ -693,12 +839,14 @@ export default function CheckoutShipping() {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between border-t border-custom-medium-green/15 pt-2.5 text-sm">
-                        <span className="font-semibold text-custom-black/80">Envío total</span>
-                        <span className="font-bold text-custom-dark-green">
-                          {formatCOP(activeQuote.totales.envio)}
-                        </span>
-                      </div>
+                      {desgloseEnvio && (
+                        <div className="flex items-center justify-between border-t border-custom-medium-green/15 pt-2.5 text-sm">
+                          <span className="font-semibold text-custom-black/80">Valor envío</span>
+                          <span className="font-bold text-custom-dark-green">
+                            {formatCOP(activeQuote.totales.envio)}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between text-sm">
                         <span className="flex items-center gap-1 text-custom-black/70">
@@ -720,8 +868,7 @@ export default function CheckoutShipping() {
                           <div className="absolute inset-0 rounded-lg border border-custom-dark-green/10 bg-custom-dark-green/5 backdrop-blur-sm" />
                           <p className="relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-custom-dark-green">
                             <Leaf className="size-3" />
-                            Envío gratis aplicado: cubrimos el flete de tu pedido. La garantía
-                            del producto se cobra aparte.
+                            Tu compra tiene descuento en el envío.
                           </p>
                         </div>
                       )}
@@ -738,6 +885,15 @@ export default function CheckoutShipping() {
                       {activeQuote ? formatCOP(activeQuote.totales.total) : "—"}
                     </span>
                   </div>
+                </div>
+
+                <div role="alert" aria-live="assertive">
+                  {formAlert && (
+                    <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50/80 px-3 py-2.5 text-xs text-red-700">
+                      <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                      <span>{formAlert}</span>
+                    </div>
+                  )}
                 </div>
 
                 {repricedNotice && (
@@ -785,80 +941,160 @@ export default function CheckoutShipping() {
   );
 }
 
-function InputField({
-  icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  className = "",
-  error,
-}: {
+type InputFieldProps = {
+  id: string;
   icon: React.ReactNode;
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   placeholder: string;
   type?: string;
   className?: string;
   error?: string;
-}) {
+  hint?: string;
+  /** Texto fijo a la izquierda (p. ej. el indicativo "+57"). */
+  prefix?: string;
+  valid?: boolean;
+  children?: React.ReactNode;
+} & Pick<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "autoComplete" | "inputMode" | "maxLength" | "autoCapitalize" | "spellCheck"
+>;
+
+function FieldMessage({ id, error, hint }: { id: string; error?: string; hint?: string }) {
+  if (error)
+    return (
+      <p id={`${id}-msg`} className="mt-1.5 flex items-start gap-1 text-xs font-medium text-red-700">
+        <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+        {error}
+      </p>
+    );
+  if (hint)
+    return (
+      <p id={`${id}-msg`} className="mt-1.5 text-xs text-custom-black/60">
+        {hint}
+      </p>
+    );
+  return null;
+}
+
+const fieldFrame = (error?: string, disabled?: boolean) =>
+  `absolute inset-0 rounded-xl border bg-white/45 transition-[border-color,box-shadow] duration-200 backdrop-blur-xl ${
+    error
+      ? "border-red-400 group-focus-within:border-red-500 group-focus-within:shadow-[0_0_0_3px_rgba(188,71,73,0.14)]"
+      : "border-white/50 group-focus-within:border-custom-dark-green/40 group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.12)]"
+  } ${disabled ? "opacity-60" : ""}`;
+
+function InputField({
+  id,
+  icon,
+  label,
+  value,
+  onChange,
+  onBlur,
+  placeholder,
+  type = "text",
+  className = "",
+  error,
+  hint,
+  prefix,
+  valid = false,
+  children,
+  ...inputProps
+}: InputFieldProps) {
+  const hasMsg = !!(error || hint);
   return (
-    <div className={className}>
-      <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
-        <span className="text-custom-dark-green/70">{icon}</span>
+    <div className={`min-w-0 ${className}`}>
+      <label htmlFor={id} className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
+        <span className="text-custom-dark-green/70" aria-hidden="true">{icon}</span>
         {label}
       </label>
-      <div className="group relative overflow-hidden rounded-xl">
-        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"}`} />
+      <div className="group relative flex items-center overflow-hidden rounded-xl">
+        <div className={fieldFrame(error)} />
+        {prefix && (
+          <span
+            className="relative flex h-6 items-center border-r border-custom-black/15 pr-3 pl-4 text-base font-medium tabular-nums text-custom-black/70 sm:text-sm"
+            aria-hidden="true"
+          >
+            {prefix}
+          </span>
+        )}
         <input
+          id={id}
+          name={id}
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
-          className="relative h-11 w-full bg-transparent px-4 text-sm text-custom-black placeholder:text-custom-black/50 focus:outline-none"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={hasMsg ? `${id}-msg` : undefined}
+          aria-label={prefix ? `${label} (indicativo ${prefix})` : undefined}
+          className={`relative h-11 w-full min-w-0 bg-transparent text-base text-custom-black placeholder:text-custom-black/45 focus:outline-none sm:text-sm ${
+            prefix ? "pl-3" : "pl-4"
+          } ${valid ? "pr-10" : "pr-4"} ${prefix || type === "tel" ? "tabular-nums" : ""}`}
+          {...inputProps}
         />
+        {valid && (
+          <Check
+            className="pointer-events-none absolute right-3.5 size-4 text-custom-medium-green motion-safe:animate-[field-ok_.25s_cubic-bezier(.16,1,.3,1)]"
+            aria-hidden="true"
+          />
+        )}
       </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      <FieldMessage id={id} error={error} hint={hint} />
+      {children}
     </div>
   );
 }
 
 function SelectField({
+  id,
   icon,
   label,
   value,
   onChange,
+  onBlur,
   options,
   placeholder,
   error,
   disabled = false,
   hint,
 }: {
+  id: string;
   icon: React.ReactNode;
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   options: { value: string; label: string }[];
   placeholder?: string;
   error?: string;
   disabled?: boolean;
   hint?: string;
 }) {
+  const hasMsg = !!(error || hint);
   return (
-    <div>
-      <label className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
-        <span className="text-custom-dark-green/70">{icon}</span>
+    <div className="min-w-0">
+      <label htmlFor={id} className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-custom-black/80">
+        <span className="text-custom-dark-green/70" aria-hidden="true">{icon}</span>
         {label}
       </label>
       <div className="group relative overflow-hidden rounded-xl">
-        <div className={`absolute inset-0 rounded-xl border bg-white/45 transition-all duration-200 backdrop-blur-xl group-focus-within:shadow-[0_0_0_3px_rgba(56,102,65,0.08)] ${error ? "border-red-400 group-focus-within:border-red-400" : "border-white/50 group-focus-within:border-custom-dark-green/30"} ${disabled ? "opacity-60" : ""}`} />
+        <div className={fieldFrame(error, disabled)} />
         <select
+          id={id}
+          name={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           disabled={disabled}
-          className="relative h-11 w-full cursor-pointer appearance-none bg-transparent pr-10 pl-4 text-sm text-custom-black focus:outline-none disabled:cursor-not-allowed"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={hasMsg ? `${id}-msg` : undefined}
+          className={`relative h-11 w-full cursor-pointer appearance-none bg-transparent pr-10 pl-4 text-base focus:outline-none disabled:cursor-not-allowed sm:text-sm ${
+            value ? "text-custom-black" : "text-custom-black/55"
+          }`}
         >
           {placeholder && (
             <option value="">{placeholder}</option>
@@ -869,13 +1105,9 @@ function SelectField({
             </option>
           ))}
         </select>
-        <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-custom-black/50" />
+        <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-custom-black/50" aria-hidden="true" />
       </div>
-      {error ? (
-        <p className="mt-1 text-xs text-red-500">{error}</p>
-      ) : hint ? (
-        <p className="mt-1 text-[10px] text-custom-black/50">{hint}</p>
-      ) : null}
+      <FieldMessage id={id} error={error} hint={hint} />
     </div>
   );
 }
