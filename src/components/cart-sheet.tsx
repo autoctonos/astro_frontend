@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import ProductPhoto from "@/components/ProductPhoto";
 import { useCartStore, formatCOP } from "@/stores/cart";
 import { CartIcon } from "@/components/icons/CartIcon";
 
@@ -60,16 +61,14 @@ export default function CartSheet() {
                   key={it.id}
                   className="flex items-center gap-3 rounded-xl border p-3"
                 >
-                  {it.image ? (
-                    <img
-                      src={it.image}
-                      alt={it.name}
-                      className="size-14 rounded-lg object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="size-14 rounded-lg bg-gray-100" />
-                  )}
+                  <ProductPhoto
+                    fit="cover"
+                    src={it.image}
+                    alt=""
+                    sizes="56px"
+                    maxWidth={160}
+                    className="size-14 shrink-0 rounded-lg"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="truncate font-medium">{it.name}</h3>

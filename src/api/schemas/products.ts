@@ -17,6 +17,14 @@ export const ProductoSchema = z.object({
     .optional()
     .transform((c) => (c == null ? undefined : typeof c === "string" ? c : c.nombre)),
   categoria_nombre: z.string().optional(),
+  categoria_slug: z.string().optional(),
+  // Detalle (opcionales: el listado no siempre los trae).
+  presentacion_completa: z.string().nullish(),
+  peso_kg: z.union([z.number(), z.string()]).nullish(),
+  requiere_frio: z.boolean().optional(),
+  productor_nombre: z.string().nullish(),
+  municipio_nombre: z.string().nullish(),
+  departamento_nombre: z.string().nullish(),
 });
 
 export type Producto = z.infer<typeof ProductoSchema>;

@@ -2,6 +2,8 @@ import { addToCart, openCart } from "@/stores/cart";
 import { getPriceInfo } from "@/lib/price";
 import PriceDisplay from "@/components/PriceDisplay";
 import { ShoppingCart } from "lucide-react";
+import ProductPhoto from "@/components/ProductPhoto";
+import { productImageSrc } from "@/lib/product-image";
 
 type ProductCardData = {
   id_producto: number;
@@ -14,57 +16,64 @@ type ProductCardData = {
   categoria_nombre?: string;
 };
 
-function normalizeImage(url?: string | null) {
-  if (!url) return "/placeholder.png";
-  if (url.startsWith("http")) return url;
-  const base = import.meta.env.PUBLIC_API_BASE ?? "";
-  return `${base}${url}`;
-}
-
 export default function ProductsList({ products }: { products: ProductCardData[] }) {
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
       {products.map((p) => {
-        const img = normalizeImage(p.imagenes?.[0]?.url_imagen);
+        const foto = p.imagenes?.[0]?.url_imagen;
         const outOfStock = p.stock === 0;
+        const categoria = p.categoria ?? p.categoria_nombre;
         const { effectivePrice, originalPrice, discountPct, hasPromo } = getPriceInfo(p.precio, p.precio_con_descuento);
         return (
           <li
             key={p.id_producto}
-            className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/60 p-3 shadow-sm backdrop-blur-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-custom-light-green/70${outOfStock ? " opacity-60 grayscale" : ""}`}
+            className="group relative flex flex-col rounded-2xl border border-custom-dark-green/10 bg-white/70 p-2.5 shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-custom-dark-green/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-3"
           >
-            <a href={`/producto/${p.id_producto}`} className="flex min-h-0 flex-1 flex-col">
-              <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl border border-white/60 bg-white/40">
-                <img
-                  src={img}
-                  alt={p.nombre}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]"
-                  loading="lazy"
-                />
-                {hasPromo && discountPct > 0 && (
-                  <span className="absolute top-2 left-2 rounded-full bg-custom-light-green px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md border border-white/20">
-                    {discountPct}% OFF
+            <a
+              href={`/producto/${p.id_producto}`}
+              className="flex min-h-0 flex-1 flex-col rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green focus-visible:ring-offset-2"
+            >
+              <ProductPhoto
+                src={foto}
+                alt={p.nombre}
+                sizes="(min-width: 1024px) 260px, (min-width: 640px) 30vw, 46vw"
+                maxWidth={640}
+                fit="cover"
+                ratio="4:3"
+                dimmed={outOfStock}
+                className="rounded-xl"
+                imgClassName="transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              >
+                {hasPromo && discountPct > 0 && !outOfStock && (
+                  <span className="absolute left-2 top-2 rounded-full bg-custom-dark-green px-2 py-0.5 text-[11px] font-bold tabular-nums text-white">
+                    −{discountPct}%
                   </span>
                 )}
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 {outOfStock && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
-                      Agotado
-                    </span>
-                  </div>
+                  <span className="absolute bottom-2 left-2 rounded-full bg-custom-black/75 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                    Agotado
+                  </span>
                 )}
-              </div>
-              <div className="mt-3 flex flex-1 flex-col">
-                <h3 className="line-clamp-2 font-semibold text-custom-black/90">
+              </ProductPhoto>
+              <div className="mt-3 flex flex-1 flex-col gap-1 px-0.5">
+                {categoria && (
+                  <span className="truncate text-[11px] font-medium uppercase tracking-wide text-custom-medium-green">
+                    {categoria}
+                  </span>
+                )}
+                <h3 className="line-clamp-2 min-h-[2.75em] text-[15px] font-semibold leading-snug text-custom-black/90">
                   {p.nombre}
                 </h3>
-                <PriceDisplay precio={p.precio} precioConDescuento={p.precio_con_descuento} />
+                <div className="mt-auto pt-1">
+                  <PriceDisplay precio={p.precio} precioConDescuento={p.precio_con_descuento} />
+                </div>
               </div>
             </a>
 
             <button
+              type="button"
               disabled={outOfStock}
+              aria-label={outOfStock ? `${p.nombre} agotado` : `Añadir ${p.nombre} al carrito`}
               onClick={
                 outOfStock
                   ? undefined
@@ -74,27 +83,25 @@ export default function ProductsList({ products }: { products: ProductCardData[]
                       id: p.id_producto,
                       name: p.nombre,
                       price: effectivePrice,
-                      image: img,
+                      image: productImageSrc(foto) ?? undefined,
                       quantity: 1,
-                      ...((p.categoria ?? p.categoria_nombre) && { category: p.categoria ?? p.categoria_nombre }),
+                      ...(categoria && { category: categoria }),
                       ...(hasPromo && originalPrice > effectivePrice && { originalPrice }),
                     });
                     openCart();
                   }
               }
-              className={
-                outOfStock
-                  ? "mt-auto w-full cursor-not-allowed rounded-xl border border-white/40 bg-white/40 px-3 py-2 text-sm font-medium text-gray-400 backdrop-blur"
-                : "mt-auto group relative flex w-full items-center justify-center gap-2 rounded-xl border border-custom-medium-green/30 bg-gradient-to-r from-custom-light-green to-custom-medium-green py-3.5 text-base font-bold text-white shadow-lg shadow-custom-medium-green/20 transition-all duration-300 hover:from-custom-medium-green hover:to-custom-dark-green hover:shadow-xl hover:border-custom-medium-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green/60 overflow-hidden px-3"
-              }
+              className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-custom-dark-green px-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-custom-medium-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-custom-black/10 disabled:text-custom-black/45 motion-reduce:active:scale-100"
             >
-            <span className="relative inline-flex items-center justify-center gap-1.5">
-                <ShoppingCart className="size-3.5 shrink-0" />
-                {outOfStock ? "Agotado" : "Añadir al carrito"}
-              </span>
-            {!outOfStock && (
-              <span className="pointer-events-none absolute -inset-px translate-x-[-120%] bg-white/20 opacity-0 transition duration-700 group-hover:translate-x-[120%] group-hover:opacity-100" />
-            )}
+              {outOfStock ? (
+                "Agotado"
+              ) : (
+                <>
+                  <ShoppingCart className="size-4 shrink-0" aria-hidden="true" />
+                  <span className="sm:hidden">Añadir</span>
+                  <span className="hidden sm:inline">Añadir al carrito</span>
+                </>
+              )}
             </button>
           </li>
         );

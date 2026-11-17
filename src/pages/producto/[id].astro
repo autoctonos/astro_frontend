@@ -3,11 +3,43 @@ export const prerender = false;
 
 import Layout from "@/layouts/Layout.astro";
 import Navbar from "@/components/navigation/navbar";
+import ProductTemplate from "@/components/product-template";
 import ProductPageClient from "@/components/ProductPageClient";
+import { fetchProductoById } from "@/api/products";
+import { HttpError } from "@/lib/http";
+import { productImageUrl } from "@/lib/product-image";
 
-const { id } = Astro.params;
+const id = String(Astro.params.id ?? "");
+
+// Se renderiza en el servidor: sin parpadeo de «Cargando…», y el título, la descripción y
+// la imagen llegan en el HTML (buscadores y vista previa al compartir por WhatsApp).
+let product: Awaited<ReturnType<typeof fetchProductoById>> | null = null;
+let noExiste = !/^\d+$/.test(id);
+if (!noExiste) {
+  try {
+    product = await fetchProductoById(id);
+  } catch (e) {
+    // 404 real → página 404. Backend caído o lento → el cliente lo reintenta.
+    noExiste = e instanceof HttpError && e.status === 404;
+  }
+}
+if (noExiste) Astro.response.status = 404;
+
+const titulo = product ? `${product.nombre} | Autóctonos` : noExiste ? "Producto no encontrado | Autóctonos" : "Producto | Autóctonos";
+const descripcion = product?.descripcion?.trim().slice(0, 160) || undefined;
+const imagen = productImageUrl(product?.imagenes?.[0]?.url_imagen, 1200, { fit: "cover" }) ?? undefined;
 ---
-<Layout title="Producto">
+<Layout title={titulo} description={descripcion} image={imagen}>
   <Navbar client:idle />
-  <ProductPageClient client:load id={String(id)} />
+  {product ? (
+    <ProductTemplate client:load product={product} />
+  ) : noExiste ? (
+    <div class="mx-auto my-12 max-w-md rounded-3xl border border-custom-black/5 bg-white/75 p-8 text-center">
+      <h1 class="text-xl font-semibold text-custom-black">Este producto no existe</h1>
+      <p class="mt-2 text-sm text-custom-black/60">Puede que ya no esté disponible.</p>
+      <a href="/" class="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-custom-dark-green px-5 text-sm font-semibold text-white hover:bg-custom-medium-green">Ver productos</a>
+    </div>
+  ) : (
+    <ProductPageClient client:load id={id} />
+  )}
 </Layout>
