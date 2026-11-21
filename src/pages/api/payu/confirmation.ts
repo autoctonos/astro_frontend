@@ -21,10 +21,16 @@ const API_BASE =
  * descartado) del lado del backend.
  */
 export const POST: APIRoute = async ({ request }) => {
+  // WebCheckout manda `application/x-www-form-urlencoded`; PayU documenta que el
+  // `notifyUrl` de la API de pagos puede llegar como JSON.
   let payload: Record<string, string>;
   try {
-    const form = await request.formData();
-    payload = Object.fromEntries(form.entries()) as Record<string, string>;
+    if ((request.headers.get("content-type") ?? "").includes("application/json")) {
+      payload = (await request.json()) as Record<string, string>;
+    } else {
+      const form = await request.formData();
+      payload = Object.fromEntries(form.entries()) as Record<string, string>;
+    }
   } catch {
     return new Response("OK", { status: 200 });
   }
