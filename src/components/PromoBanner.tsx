@@ -1,7 +1,11 @@
-import { Truck, Shield, Clock, Leaf } from "lucide-react";
+import { Shield, Clock, Leaf } from "lucide-react";
 
 const features = [
-  { icon: Truck, title: "Flete gratis", desc: "En pedidos superiores a $200.000" },
+  // Flete gratis por monto: pausado para una siguiente versión. Al reactivarlo, descomentar
+  // esta línea, volver a importar `Truck` y regresar la grilla a 2/4 columnas (abajo), y
+  // reactivar la barra de progreso de `cart-drawer.tsx`. El descuento real lo aplica el
+  // backend (`PromocionEnvio`); este texto solo debe volver cuando haya una promoción activa.
+  // { icon: Truck, title: "Flete gratis", desc: "En pedidos superiores a $200.000" },
   { icon: Shield, title: "Pago seguro", desc: "Transacciones protegidas" },
   { icon: Clock, title: "Entrega rápida", desc: "1 a 4 días hábiles según destino" },
   { icon: Leaf, title: "100% orgánico", desc: "Productores certificados" },
@@ -11,7 +15,7 @@ export default function PromoBanner() {
   return (
     <section className="border-y border-custom-medium-green/30 bg-custom-cream/70 backdrop-blur-sm">
       <div className="container-ecommerce py-5 md:py-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
