@@ -21,6 +21,10 @@ import {
   Clock,
   Check,
   Smartphone,
+  Minus,
+  Plus,
+  Trash2,
+  Undo2,
 } from "lucide-react";
 import {
   DOC_RULES,
@@ -35,7 +39,8 @@ import {
   type BuyerField,
   type DocType,
 } from "@/lib/validation/checkout";
-import { useCartStore, formatCOP, syncCartPricing } from "@/stores/cart";
+import { useCartStore, formatCOP, syncCartPricing, incCart, decCart, removeFromCart, addToCart } from "@/stores/cart";
+import type { CartItem } from "@/stores/cart";
 import { useShippingDestinos, useShippingQuote } from "@/hooks/useShippingQuote";
 import type { ShippingQuoteError } from "@/hooks/useShippingQuote";
 import {
@@ -177,6 +182,25 @@ export default function CheckoutShipping() {
   const desgloseEnvio = variosEnvios || hayDescuentoEnvio;
 
   const [priceNotice, setPriceNotice] = useState(false);
+  // Último producto quitado del resumen: se puede deshacer durante unos segundos, para
+  // que un toque accidental no obligue a volver a la tienda a buscarlo.
+  const [quitado, setQuitado] = useState<CartItem | null>(null);
+  const quitadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quitar = (item: CartItem) => {
+    removeFromCart(item.id);
+    setQuitado(item);
+    if (quitadoTimer.current) clearTimeout(quitadoTimer.current);
+    quitadoTimer.current = setTimeout(() => setQuitado(null), 8000);
+  };
+  useEffect(() => () => {
+    if (quitadoTimer.current) clearTimeout(quitadoTimer.current);
+  }, []);
+  const deshacer = () => {
+    if (!quitado) return;
+    addToCart(quitado);
+    setQuitado(null);
+    if (quitadoTimer.current) clearTimeout(quitadoTimer.current);
+  };
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
@@ -667,45 +691,109 @@ export default function CheckoutShipping() {
                   </div>
                   <h2 className="text-lg font-bold text-custom-dark-green">Resumen</h2>
                   <span className="ml-auto rounded-full bg-custom-dark-green/10 px-2.5 py-0.5 text-xs font-bold text-custom-dark-green">
-                    {totalItems} productos
+                    {totalItems} {totalItems === 1 ? "producto" : "productos"}
                   </span>
                 </div>
 
-                <div className="mb-5 flex flex-col gap-3">
+                <ul className="mb-5 flex flex-col gap-3" aria-label="Productos del pedido">
                   {items.map((it) => (
-                    <div key={it.id} className="group relative overflow-hidden rounded-xl">
+                    <li key={it.id} className="relative overflow-hidden rounded-xl">
                       <div className="absolute inset-0 rounded-xl border border-white/45 bg-white/40 backdrop-blur-xl" />
-                      <div className="relative flex items-center gap-3 p-3">
+                      <div className="relative flex gap-3 p-3">
                         <ProductPhoto
                           fit="cover"
                           src={it.image}
                           alt=""
-                          sizes="56px"
+                          sizes="64px"
                           maxWidth={160}
-                          className="size-14 shrink-0 rounded-lg"
+                          className="size-16 shrink-0 rounded-lg"
                         />
-                        <div className="min-w-0 flex-1">
-                          <h4 className="truncate text-sm font-semibold text-custom-dark-green">
-                            {it.name}
-                          </h4>
-                          <p className="mt-0.5 text-xs text-custom-black/60">
-                            ×{it.quantity} unidades
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <span className="text-sm font-bold text-custom-dark-green">
-                            {formatCOP(it.price * it.quantity)}
-                          </span>
-                          {it.originalPrice != null && it.originalPrice > it.price && (
-                            <p className="text-[10px] text-custom-black/50 line-through">
-                              {formatCOP(it.originalPrice * it.quantity)}
-                            </p>
-                          )}
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="line-clamp-2 text-sm font-semibold leading-snug text-custom-dark-green">
+                                {it.name}
+                              </h4>
+                              <p className="mt-0.5 text-xs tabular-nums text-custom-black/60">
+                                {formatCOP(it.price)} c/u
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right tabular-nums">
+                              <span className="text-sm font-bold text-custom-dark-green">
+                                {formatCOP(it.price * it.quantity)}
+                              </span>
+                              {it.originalPrice != null && it.originalPrice > it.price && (
+                                <p className="text-xs text-custom-black/50 line-through">
+                                  {formatCOP(it.originalPrice * it.quantity)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div
+                              className="inline-flex items-center rounded-lg border border-custom-dark-green/15 bg-white/70"
+                              role="group"
+                              aria-label={`Cantidad de ${it.name}`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => decCart(it.id)}
+                                disabled={it.quantity <= 1}
+                                className="flex size-9 items-center justify-center rounded-l-lg text-custom-dark-green transition-colors hover:bg-custom-light-green/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green disabled:cursor-not-allowed disabled:text-custom-black/25 disabled:hover:bg-transparent"
+                                aria-label={`Quitar una unidad de ${it.name}`}
+                              >
+                                <Minus className="size-4" />
+                              </button>
+                              <span
+                                className="w-9 text-center text-sm font-bold tabular-nums text-custom-dark-green"
+                                aria-live="polite"
+                                aria-label={`${it.quantity} ${it.quantity === 1 ? "unidad" : "unidades"}`}
+                              >
+                                {it.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => incCart(it.id)}
+                                className="flex size-9 items-center justify-center rounded-r-lg text-custom-dark-green transition-colors hover:bg-custom-light-green/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                                aria-label={`Agregar una unidad de ${it.name}`}
+                              >
+                                <Plus className="size-4" />
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => quitar(it)}
+                              className="inline-flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium text-custom-black/60 transition-colors hover:bg-custom-red/10 hover:text-custom-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-red/40"
+                              aria-label={`Quitar ${it.name} del pedido`}
+                            >
+                              <Trash2 className="size-4 sm:size-3.5" aria-hidden="true" />
+                              <span className="hidden sm:inline">Quitar</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
+
+                {quitado && (
+                  <div
+                    role="status"
+                    className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-custom-dark-green/15 bg-white/70 px-3 py-2 text-sm text-custom-black/75"
+                  >
+                    <span className="min-w-0 truncate">
+                      Quitaste <strong className="font-semibold text-custom-dark-green">{quitado.name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={deshacer}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 font-semibold text-custom-dark-green transition-colors hover:bg-custom-light-green/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-medium-green"
+                    >
+                      <Undo2 className="size-4" aria-hidden="true" />
+                      Deshacer
+                    </button>
+                  </div>
+                )}
 
                 {priceNotice && (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-xs text-amber-800">
@@ -819,8 +907,7 @@ export default function CheckoutShipping() {
                             <div className="pl-4 text-xs text-custom-black/60">
                               <span className="flex items-center gap-1">
                                 <Snowflake className="size-3" aria-hidden="true" />
-                                Empaque refrigerado incluido ({g.neveras}{" "}
-                                {g.neveras === 1 ? "nevera" : "neveras"})
+                                Empaque refrigerado incluido
                               </span>
                             </div>
                           )}
@@ -916,7 +1003,10 @@ export default function CheckoutShipping() {
 
                 {items.length === 0 && (
                   <p className="mt-3 text-center text-sm text-custom-black/60">
-                    Tu carrito está vacío.
+                    Tu carrito está vacío.{" "}
+                    <a href="/" className="font-semibold text-custom-dark-green underline underline-offset-2 hover:text-custom-medium-green">
+                      Volver a la tienda
+                    </a>
                   </p>
                 )}
 
