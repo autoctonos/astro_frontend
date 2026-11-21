@@ -5,5 +5,5 @@ dist
 .gitignore
 Dockerfile*
 docker-compose*.yml
-.env
+.env*
 .DS_Store

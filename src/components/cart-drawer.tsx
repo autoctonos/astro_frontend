@@ -8,7 +8,6 @@ import {
   ShoppingBag,
   ArrowRight,
   Tag,
-  Leaf,
 } from "lucide-react";
 import {
   useCartStore,
@@ -18,15 +17,13 @@ import {
   formatCOP,
 } from "@/stores/cart";
 
+// ── Flete gratis por monto: PAUSADO para una siguiente versión ─────────────────────
 // Umbral del envío gratis, sólo para la barra de progreso. El costo real del envío lo
 // calcula el backend en el checkout: depende del destino, del peso y de cuántos
 // productores despachan el pedido, así que aquí no se puede adivinar un monto.
-const FREE_SHIPPING_MIN = 200000;
-
-// Ocultar la barra de "Faltan $X para flete gratis" mientras se define con el cliente
-// si el envío gratis por monto se sostiene. La lógica (cálculo, barra de progreso,
-// PromocionEnvio en el backend) queda intacta: poner esto en true la reactiva.
-const SHOW_FREE_SHIPPING_PROGRESS = false;
+// Para reactivar: descomentar esta constante, `progressPct` y el bloque «Progreso envío
+// gratis» del footer, y volver a importar `Leaf`. Ver también `PromoBanner.tsx`.
+// const FREE_SHIPPING_MIN = 200000;
 
 export default function CartDrawer({ showInCheckout = false }: { showInCheckout?: boolean }) {
   const isOpen = useCartStore((s) => s.isOpen);
@@ -82,7 +79,8 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
         : 0),
     0
   );
-  const progressPct = Math.min(100, (discountedSubtotal / FREE_SHIPPING_MIN) * 100);
+  // Flete gratis pausado (ver FREE_SHIPPING_MIN):
+  // const progressPct = Math.min(100, (discountedSubtotal / FREE_SHIPPING_MIN) * 100);
 
   return (
     <div
@@ -240,10 +238,10 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
             <div className="relative mt-auto shrink-0">
               <div className="absolute inset-0 border-t border-white/60 bg-white/50 backdrop-blur-2xl" />
               <div className="relative flex flex-col gap-4 px-5 py-5">
-                {/* Progreso envío gratis — oculto a pedido del cliente mientras se define
-                    si el envío gratis se sostiene o no. Lógica y componente intactos:
-                    poner SHOW_FREE_SHIPPING_PROGRESS en true para reactivarlo. */}
-                {SHOW_FREE_SHIPPING_PROGRESS && (
+                {/* Progreso envío gratis — PAUSADO para una siguiente versión (ver
+                    FREE_SHIPPING_MIN arriba). Para reactivar, reemplazar este comentario por
+                    el bloque de abajo (tal cual, ya es JSX válido):
+
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="flex items-center gap-1 text-custom-dark-green/80">
@@ -263,7 +261,7 @@ export default function CartDrawer({ showInCheckout = false }: { showInCheckout?
                       />
                     </div>
                   </div>
-                )}
+                */}
 
                 {/* Resumen */}
                 <div className="flex flex-col gap-2">

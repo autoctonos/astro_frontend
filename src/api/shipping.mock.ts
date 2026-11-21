@@ -43,7 +43,7 @@ const PESO_POR_DEFECTO_KG = 0.8;
 
 const tarifaPorJerarquia = (j: number) =>
   TARIFARIO.find((t) => t.jerarquia === j) ?? TARIFARIO[TARIFARIO.length - 1]!;
-
+const TARIFA_URBANA = TARIFARIO.find((t) => t.codigo === "urbano")!;
 
 export const MOCK_DESTINOS: DestinosResponse = {
   version: "2026-09-03T12:00:00Z",
@@ -152,7 +152,12 @@ export function mockCotizar(idMunicipioDestino: number, items: MockCartItem[]): 
   for (const [clave, itemsOrigen] of porGrupo) {
     const idProductor = Number(clave.split("::")[0]);
     const origen = PRODUCTORES.find((p) => p.idProductor === idProductor)!;
-    const jerarquia = Math.max(origen.jerarquia, destinoEntry.jerarquia);
+    // Simplificación del backend: si la guía no sale de su municipio, la urbana cuando es
+    // de menor jerarquía (el backend compara el precio real).
+    const normal = Math.max(origen.jerarquia, destinoEntry.jerarquia);
+    const jerarquia = origen.idMunicipio === destinoEntry.id_municipio
+      ? Math.min(TARIFA_URBANA.jerarquia, normal)
+      : normal;
     const tarifa = tarifaPorJerarquia(jerarquia);
 
     let pesoBruto = 0;

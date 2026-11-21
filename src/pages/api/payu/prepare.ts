@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { getSecret } from "astro:env/server";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { CotizacionSchema, parseCotizacionError } from "@/api/schemas/shipping";
@@ -121,12 +122,15 @@ export const POST: APIRoute = async ({ request }) => {
     confirmar,
   } = parsed.data;
 
-  const MERCHANT_ID = import.meta.env.PAYU_MERCHANT_ID as string;
-  const ACCOUNT_ID = import.meta.env.PAYU_ACCOUNT_ID as string;
-  const API_KEY = import.meta.env.PAYU_API_KEY as string;
-  const MODE = (import.meta.env.PAYU_MODE as string) || "sandbox";
-  const RESPONSE_URL = import.meta.env.PAYU_RESPONSE_URL as string;
-  const CONFIRMATION_URL = import.meta.env.PAYU_CONFIRMATION_URL as string;
+  // getSecret lee en runtime (adapter Vercel o Node). `import.meta.env.PAYU_*` se
+  // incrustaba en el bundle en build time: sin las variables en el build quedaba
+  // `undefined`, y con ellas el secreto terminaba dentro del artefacto.
+  const MERCHANT_ID = getSecret("PAYU_MERCHANT_ID");
+  const ACCOUNT_ID = getSecret("PAYU_ACCOUNT_ID");
+  const API_KEY = getSecret("PAYU_API_KEY");
+  const MODE = getSecret("PAYU_MODE") || "sandbox";
+  const RESPONSE_URL = getSecret("PAYU_RESPONSE_URL") ?? "";
+  const CONFIRMATION_URL = getSecret("PAYU_CONFIRMATION_URL") ?? "";
 
   if (!MERCHANT_ID || !ACCOUNT_ID || !API_KEY) {
     return json({ error: "Faltan credenciales PayU." }, 500);

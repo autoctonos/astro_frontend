@@ -12,7 +12,17 @@ import { openCart, useCartCount } from "@/stores/cart";
 
 type NavItem = { href: string; label: string };
 
-export default function Navbar({ hideCategories = false }: { hideCategories?: boolean }) {
+/**
+ * `hideCart`: en /checkout el botón del carrito no sirve (el carrito ya está en la
+ * pantalla y el drawer no se abre ahí), así que se oculta.
+ */
+export default function Navbar({
+  hideCategories = false,
+  hideCart = false,
+}: {
+  hideCategories?: boolean;
+  hideCart?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [openList, setOpenList] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -151,6 +161,7 @@ export default function Navbar({ hideCategories = false }: { hideCategories?: bo
               Nuestros Productores
             </Button>
           </NavbarItem>
+          {!hideCart && (
           <NavbarItem className="hidden sm:flex">
             <button
               onClick={() => openCart()}
@@ -190,6 +201,7 @@ export default function Navbar({ hideCategories = false }: { hideCategories?: bo
               </span>
             </button>
           </NavbarItem>
+          )}
         </NavbarContent>
       </NavbarContent>
 
@@ -220,6 +232,7 @@ export default function Navbar({ hideCategories = false }: { hideCategories?: bo
           <Drop title="Explorar categorías" />
         </div>
       )}
+      {!hideCart && (
       <div className="mt-6">
         <button
           onClick={() => {
@@ -245,6 +258,7 @@ export default function Navbar({ hideCategories = false }: { hideCategories?: bo
           )}
         </button>
       </div>
+      )}
       <nav className="space-y-1">
         {navMenuItems.map((item, index) => (
           <NavbarMenuItem key={`${item.href}-${index}`}>

@@ -5,7 +5,7 @@ type Props = { className?: string };
 
 export default function CartBadge({ className }: Props) {
   const open = useCartStore((s) => s.open);
-  const count = useCartStore((s) => s.count());
+  const count = useCartStore((s) => s.items.reduce((sum, it) => sum + it.quantity, 0));
 
   return (
     <button
