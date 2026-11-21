@@ -37,12 +37,14 @@ export async function fetchProductosConImagenes() {
     }
   }
 
-  const finalParsed = ProductosArraySchema.safeParse(all);
+  // `all` ya es la lista plana de todas las páginas: se valida como arreglo para que el
+  // tipo de retorno sea `Producto[]` y no `any`.
+  const finalParsed = ProductoSchema.array().safeParse(all);
   if (!finalParsed.success) {
     throw new Error("Respuesta inválida de productos (acumulada)");
   }
 
-  return finalParsed.data as any;
+  return finalParsed.data;
 }
 
 export async function fetchProductoById(id: string | number) {
