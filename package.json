@@ -10,6 +10,7 @@
     "start": "node ./dist/server/entry.mjs"
   },
   "dependencies": {
+    "@astrojs/node": "^9.4.0",
     "@astrojs/react": "^4.3.0",
     "@heroui/link": "^2.2.21",
     "@heroui/react": "^2.8.2",
@@ -26,7 +27,6 @@
     "zustand": "^5.0.7"
   },
   "devDependencies": {
-    "@astrojs/node": "^9.4.0",
     "@astrojs/vercel": "9",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.12",
